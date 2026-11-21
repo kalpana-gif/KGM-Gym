@@ -46,7 +46,7 @@ The rename keeps the original local storage identifiers so an existing diary rem
 ## Connect Supabase
 
 1. Create a Supabase project.
-2. Execute `supabase/migrations/001_lankafit.sql` in the SQL editor. Run it once on a new project.
+2. Execute `supabase/migrations/001_lankafit.sql`, then `supabase/migrations/002_explicit_api_access.sql` in the SQL editor. Run the first migration once on a new project. The second provides the read access needed when automatic API grants are disabled; private rows remain protected by RLS.
 3. Execute `supabase/seed.sql` after a local build. This provides the shared catalog. The offline app also bundles the same catalog.
 4. In Authentication, enable email sign-in. Set the site URL and allowed redirect URLs to your Netlify URL and local development URL.
 5. Copy the project URL and publishable key from Supabase's project API settings.

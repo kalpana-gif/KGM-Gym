@@ -27,7 +27,6 @@ beforeAll(async()=>{
     create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema auth,storage,public to anon,authenticated,service_role;
-    alter default privileges in schema public grant all on tables to anon,authenticated,service_role;
     create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
     create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
     create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;
@@ -36,6 +35,7 @@ beforeAll(async()=>{
   `);
   await db.query('insert into auth.users(id) values($1),($2)',[alice,bob]);
   await db.exec(await readFile('supabase/migrations/001_lankafit.sql','utf8'));
+  await db.exec(await readFile('supabase/migrations/002_explicit_api_access.sql','utf8'));
 },30000);
 afterAll(()=>db.close());
 describe('PostgreSQL migrations and access rules',()=>{

@@ -3,6 +3,11 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[build.environment]
+  # These URL/publishable-key values are intentionally included in the browser.
+  # Keep private service-role and Gemini keys covered by secrets scanning.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY"
+
 [functions]
   node_bundler = "esbuild"
 
