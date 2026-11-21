@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.netlify/
+playwright-report/
+test-results/
+artifacts/
+.idea/
+.DS_Store
+*.tsbuildinfo
+nutrition-source/

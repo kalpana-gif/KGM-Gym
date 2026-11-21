@@ -1,0 +1,140 @@
+import { expect, test, type Page } from '@playwright/test';
+async function captureDashboard(page:Page,path:string) {
+  const dismiss=page.getByRole('button',{name:'Dismiss message'});
+  if(await dismiss.count()) {
+    await dismiss.last().click();
+    await expect(page.locator('.toast')).toHaveCount(0);
+  }
+  for(const card of await page.locator('.diary-card').all()) {
+    await card.scrollIntoViewIfNeeded();
+    await expect(card).toHaveCSS('opacity','1');
+  }
+  await page.evaluate(()=>{
+    if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+    window.scrollTo({top:0,behavior:'instant'});
+  });
+  await expect(page.locator('.page-transition')).toHaveCSS('opacity','1');
+  await expect(page.locator('.dashboard-grid')).toHaveCSS('opacity','1');
+  await page.screenshot({path,fullPage:true});
+}
+test('mobile guest: review target, log a meal, reload offline, edit, delete and restore',async({page,context})=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:/Small steps/})).toBeVisible();
+  await page.getByRole('button',{name:/find your starting point/}).click();
+  await page.getByLabel('Sex input for energy equation').selectOption('male');
+  await page.getByRole('combobox',{name:'Activity level',exact:true}).selectOption('sedentary');
+  await page.getByLabel(/I’ve reviewed this estimated target/).check();
+  await page.getByRole('button',{name:'Confirm & save my target'}).click();
+  await expect(page.getByText('2,148',{exact:true}).first()).toBeVisible();
+  await page.getByRole('button',{name:'Log a meal',exact:true}).click();
+  await page.getByRole('button',{name:'Type a meal'}).click();
+  await page.getByLabel('Describe your meal').fill('150 g cooked red rice, 100 g chicken curry, and 2 eggs');
+  await page.getByRole('button',{name:'Review foods',exact:true}).click();
+  await expect(page.getByRole('button',{name:/Confirm & save meal/})).toBeEnabled();
+  await page.getByRole('button',{name:/Confirm & save meal/}).click();
+  await expect(page.getByRole('button',{name:/Cooked red rice & Chicken curry/})).toBeVisible();
+  await page.evaluate(async()=>{
+    const registration=await navigator.serviceWorker.ready;
+    if(!navigator.serviceWorker.controller)await new Promise<void>(resolve=>navigator.serviceWorker.addEventListener('controllerchange',()=>resolve(),{once:true}));
+    return registration.active?.state;
+  });
+  await context.setOffline(true);await page.reload();
+  await expect(page.getByRole('button',{name:/Cooked red rice & Chicken curry/})).toBeVisible();
+  await page.getByRole('button',{name:/Cooked red rice & Chicken curry/}).click();
+  const grams=page.getByLabel('Grams',{exact:true});await grams.first().fill('200');
+  await page.getByRole('button',{name:/Confirm & update meal/}).click();
+  await page.getByRole('button',{name:/Cooked red rice & Chicken curry/}).click();
+  await expect(page.getByLabel('Grams',{exact:true}).first()).toHaveValue('200');
+  await page.getByRole('button',{name:'Delete',exact:true}).click();
+  await expect(page.getByRole('button',{name:/Cooked red rice & Chicken curry/})).toHaveCount(0);
+  await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Food',exact:true}).click();
+  await page.getByRole('button',{name:'Recently deleted meals'}).click();
+  await page.getByRole('button',{name:'Restore',exact:true}).click();
+  await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Today',exact:true}).click();
+  await expect(page.getByRole('button',{name:/Cooked red rice & Chicken curry/})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+  await captureDashboard(page,'artifacts/lankafit-mobile.png');
+});
+test('deep links, calculated meal plan, workout logs, photo fallback and 360px layout',async({page})=>{
+  await page.setViewportSize({width:360,height:800});await page.goto('/plan');
+  await page.getByRole('button',{name:'Review my calculator'}).click();
+  await page.getByLabel('Sex input for energy equation').selectOption('female');
+  await page.getByRole('combobox',{name:'Activity level',exact:true}).selectOption('light');
+  await page.getByLabel(/I’ve reviewed this estimated target/).check();
+  await page.getByRole('button',{name:'Confirm & save my target'}).click();
+  await expect(page.getByRole('button',{name:/I ate this/})).toHaveCount(4);
+  await expect(page.locator('.page-transition')).toHaveCSS('opacity','1');
+  await page.screenshot({path:'artifacts/lankafit-plan.png',fullPage:true});
+  await page.getByRole('button',{name:/I ate this/}).first().click();
+  await page.getByRole('button',{name:'Shopping list',exact:true}).click();
+  await expect(page.getByRole('dialog')).toContainText('Coconut oil');
+  await page.getByRole('button',{name:'Close dialog'}).click();
+  await page.goto('/workouts');await page.getByRole('button',{name:'Save session'}).click();
+  await expect(page.getByText('Your movement history',{exact:true})).toBeVisible();
+  await expect(page.locator('.page-transition')).toHaveCSS('opacity','1');
+  await page.screenshot({path:'artifacts/lankafit-workouts.png',fullPage:true});
+  await page.goto('/food');await page.getByRole('button',{name:'Log a meal',exact:true}).click();
+  await page.getByRole('button',{name:'Meal photo',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Sign in to use online AI →'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Estimate with AI'})).toBeDisabled();
+  await expect(page.getByRole('dialog')).toHaveCSS('opacity','1');
+  await page.screenshot({path:'artifacts/lankafit-photo.png'});
+  await page.getByRole('button',{name:'Close dialog'}).click();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+test('desktop layout and guest-data deletion',async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await page.goto('/');
+  await expect(page.getByRole('heading',{name:/Small steps/})).toBeVisible();
+  await captureDashboard(page,'artifacts/lankafit-desktop.png');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.getByRole('button',{name:'Account and data'}).click();
+  await expect(page.getByRole('dialog')).toContainText('Device-only guest mode');
+  await page.getByText('Delete this guest diary',{exact:true}).click();
+  await page.getByLabel('Type DELETE to confirm').fill('DELETE');
+  await page.getByRole('button',{name:'Permanently delete'}).click();
+  await expect(page.getByRole('heading',{name:/Small steps/})).toBeVisible();
+});
+test('photo drafts persist locally without creating a diary entry',async({page})=>{
+  await page.goto('/food');await page.getByRole('button',{name:'Log a meal',exact:true}).click();
+  await page.getByRole('button',{name:'Meal photo',exact:true}).click();
+  await page.locator('input[type=file]').setInputFiles('public/icon-192.png');
+  await page.getByLabel('Optional description').fill('A local test photo draft');
+  await page.getByRole('button',{name:'Save offline draft'}).click();
+  await expect(page.getByText('Saved photo drafts (1)',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Close dialog'}).click();
+  await page.reload();
+  await page.getByRole('button',{name:'Log a meal',exact:true}).click();
+  await page.getByRole('button',{name:'Meal photo',exact:true}).click();
+  await page.getByText('Saved photo drafts (1)',{exact:true}).click();
+  await page.getByRole('button',{name:/Open A local test photo draft/}).click();
+  await expect(page.getByRole('img',{name:'Your meal draft'})).toBeVisible();
+  await page.getByRole('button',{name:'Delete photo draft'}).click();
+  await expect(page.getByText('Saved photo drafts (1)',{exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Close dialog'}).click();
+  await page.getByRole('navigation',{name:'Mobile navigation'}).getByRole('button',{name:'Today',exact:true}).click();
+  await expect(page.getByText('0 kcal',{exact:true}).first()).toBeVisible();
+});
+test('reduced motion and keyboard access keep navigation and dialogs usable',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:/Small steps/})).toBeVisible();
+  await expect(page.locator('.page-transition')).toHaveCSS('transform','none');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main-content')).toBeFocused();
+  const navigation=page.getByRole('navigation',{name:'Mobile navigation'});
+  await page.getByRole('region',{name:'Quick access'}).getByRole('button',{name:'Movement',exact:true}).click();
+  await expect(page.getByRole('heading',{name:/Build a little momentum/})).toBeVisible();
+  await navigation.getByRole('button',{name:'Today',exact:true}).click();
+  await navigation.getByRole('button',{name:'Progress',exact:true}).click();
+  await expect(navigation.getByRole('button',{name:'Progress',exact:true})).toHaveAttribute('aria-current','page');
+  await expect(page.locator('.page-transition')).toHaveCSS('transform','none');
+  await page.getByRole('button',{name:'Your preferences',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Your starting point'})).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

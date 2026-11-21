@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "KGM-FIT",
+  "short_name": "KGM-FIT",
+  "description": "Sri Lankan food, movement and weight tracking. Works offline.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#191D1E",
+  "theme_color": "#010C12",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
