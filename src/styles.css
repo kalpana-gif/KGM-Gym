@@ -1903,6 +1903,275 @@ input[type=checkbox] {
   color:var(--muted);
   margin-top:5px;
 }
+.account-flow {
+  display:grid;
+  gap:18px;
+}
+.account-flow .account-status {
+  align-items:flex-start;
+  gap:12px;
+  margin:0;
+}
+.account-flow .account-status>div {
+  flex:1;
+}
+.account-symbol {
+  display:grid;
+  place-items:center;
+  width:46px;
+  height:46px;
+  border:1px solid #9BFF0033;
+  border-radius:14px;
+  background:linear-gradient(145deg,#263727,#18211D);
+  box-shadow:var(--shadow);
+  color:var(--accent);
+  flex-shrink:0;
+}
+.account-badge {
+  border:1px solid var(--border);
+  padding:4px 8px;
+  border-radius:20px;
+  color:var(--muted);
+  font-size:10px;
+  margin-top:2px;
+}
+.account-steps {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  padding:0;
+  margin:2px 0 0;
+  list-style:none;
+  gap:8px;
+}
+.account-steps li {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:11px;
+  color:var(--muted);
+  border-bottom:2px solid var(--border);
+  padding:0 0 12px;
+}
+.account-steps li>span {
+  display:grid;
+  place-items:center;
+  flex-shrink:0;
+  height:23px;
+  width:23px;
+  border-radius:50%;
+  background:var(--well);
+  font-size:10px;
+  border:1px solid var(--border);
+}
+.account-steps .current {
+  border-color:var(--accent);
+  color:var(--text);
+}
+.account-steps .current>span,.account-steps .complete>span {
+  background:var(--accent);
+  border-color:var(--accent);
+  color:var(--night);
+}
+.account-connect {
+  border:1px solid var(--border);
+  border-radius:19px;
+  background:linear-gradient(140deg,#2D352F,var(--surface-soft));
+  padding:22px;
+  box-shadow:var(--shadow);
+  min-width:0;
+}
+.account-connect h3 {
+  font-size:21px;
+  letter-spacing:-.6px;
+  margin:0 0 8px;
+  line-height:1.25;
+}
+.account-connect>p,.account-import p,.account-sync p {
+  font-size:13px;
+  color:var(--muted);
+}
+.account-connect form {
+  margin-top:20px;
+}
+.account-connect form label {
+  margin-bottom:8px;
+}
+.account-connect form .btn {
+  margin-top:18px;
+  min-height:52px;
+}
+.account-connect .fineprint {
+  font-size:12px;
+}
+.account-mail-art {
+  position:relative;
+  display:grid;
+  place-items:center;
+  width:64px;
+  height:64px;
+  margin:0 0 18px;
+  border-radius:19px;
+  background:linear-gradient(135deg,#374B27,#17241B);
+  color:var(--accent);
+  box-shadow:var(--shadow);
+  border:1px solid #9BFF0038;
+}
+.account-mail-art>span {
+  position:absolute;
+  right:-4px;
+  bottom:2px;
+  width:23px;
+  height:23px;
+  display:grid;
+  place-items:center;
+  background:var(--accent);
+  color:var(--night);
+  border-radius:50%;
+  border:3px solid var(--surface-soft);
+}
+.account-email {
+  display:block;
+  color:var(--text);
+  overflow-wrap:anywhere;
+  margin-top:3px;
+}
+.account-email-guide {
+  display:grid;
+  grid-template-columns:23px minmax(0,1fr);
+  gap:12px 9px;
+  padding:16px 0;
+}
+.account-email-guide>span {
+  display:grid;
+  place-items:center;
+  width:23px;
+  height:23px;
+  background:var(--well);
+  border:1px solid var(--border);
+  border-radius:50%;
+  font-size:11px;
+  color:var(--muted);
+}
+.account-email-guide p {
+  font-size:12px;
+  color:var(--muted);
+}
+.account-email-guide strong {
+  color:var(--text);
+  font-weight:600;
+}
+.account-connect>a.btn {
+  margin-top:18px;
+  min-height:52px;
+}
+.account-resend {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:0 12px;
+  margin-top:10px;
+}
+.account-resend button {
+  font-size:12px;
+}
+.account-trust {
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.6;
+}
+.account-trust>svg {
+  margin-top:2px;
+  color:var(--accent);
+}
+.account-error,.account-sync-message.error {
+  padding:12px;
+  margin-top:14px;
+  background:#3E2525;
+  border:1px solid #99665E;
+  border-radius:11px;
+  color:var(--danger);
+  font-size:12px;
+}
+.account-connect .account-error {
+  color:var(--danger);
+}
+.account-guest,.account-signout {
+  justify-self:center;
+  color:var(--muted);
+  font-size:13px;
+}
+.account-downloads {
+  margin-top:22px;
+  padding-block:4px;
+}
+.account-downloads summary>span {
+  display:inline-flex;
+  gap:9px;
+  align-items:center;
+  vertical-align:middle;
+}
+.account-import {
+  display:grid;
+  grid-template-columns:25px minmax(0,1fr);
+  gap:8px 12px;
+  padding:20px;
+  border:1px solid #9BFF0052;
+  border-radius:18px;
+  background:linear-gradient(145deg,#293824,var(--surface-soft));
+  box-shadow:var(--shadow);
+}
+.account-import>svg {
+  color:var(--accent);
+  margin-top:2px;
+}
+.account-import h3,.account-sync h3 {
+  margin:0 0 5px;
+}
+.account-import .btn {
+  grid-column:1/-1;
+}
+.account-sync {
+  padding:18px;
+  border-radius:17px;
+  border:1px solid var(--border);
+  background:var(--surface-soft);
+}
+.account-sync>div {
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+.account-sync>div>svg {
+  color:var(--accent);
+}
+.account-sync .account-sync-message {
+  display:flex;
+  align-items:flex-start;
+  gap:6px;
+  font-size:12px;
+  margin-top:14px;
+}
+.account-sync-message.done {
+  color:var(--accent);
+}
+.account-spinner {
+  animation:account-spin 1.2s linear infinite;
+}
+@keyframes account-spin {
+  to { transform:rotate(360deg); }
+}
+@media (max-width:380px) {
+  .account-connect { padding:18px 16px; }
+  .account-steps li { font-size:10px; gap:5px; }
+  .account-badge { display:none; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .account-spinner { animation:none; }
+}
 .settings-heading {
   margin:28px 0 15px;
 }

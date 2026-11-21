@@ -90,7 +90,7 @@ test('desktop layout and guest-data deletion',async({page})=>{
   await captureDashboard(page,'artifacts/lankafit-desktop.png');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByRole('button',{name:'Account and data'}).click();
-  await expect(page.getByRole('dialog')).toContainText('Device-only guest mode');
+  await expect(page.getByRole('dialog')).toContainText('Your diary is safe on this device');
   await page.getByText('Delete this guest diary',{exact:true}).click();
   await page.getByLabel('Type DELETE to confirm').fill('DELETE');
   await page.getByRole('button',{name:'Permanently delete'}).click();

@@ -116,6 +116,8 @@ The server version wins a conflict deterministically, while the latest local ver
 
 Sign-out hides the previous account's local records and leaves unsynced work available when that same account signs in again. Authentication and cloud synchronization require connectivity. Importing guest data is explicit and skips previously imported record IDs.
 
+The account screen guides email sign-in through entering an address, opening the newest Supabase Auth email, and backing up existing device entries. A successful request shows a dedicated inbox screen with a one-minute resend countdown that survives reopening the dialog. Expired callback links return to the sign-in screen with a new-link prompt. After completing a pending sign-in, the account screen opens with an explicit device-diary backup option; it does not silently import guest records. Email delivery still requires a correctly configured Supabase Auth email provider.
+
 Deleted meals stay recoverable with their payload until permanent account/diary deletion. Local photo draft deletion removes the image directly. Account deletion removes retained cloud objects, deletes the auth account with cascading database removal, and clears that account's local records and queues on the current device. Other devices remove their cache after signing out / clearing site data; an offline device cannot be remotely wiped.
 
 Private browsing or clearing site data can remove IndexedDB. Use exports or cloud synchronization for backups.

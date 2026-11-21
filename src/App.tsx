@@ -5,6 +5,7 @@ import { Context } from './context';
 import { catalog } from './data/catalog';
 import { conflicts, pending, records } from './lib/db';
 import { supabase, sync } from './lib/cloud';
+import { authLinkError, readSignInRequest, storeSignInRequest } from './lib/account';
 import { addDays, localDate } from './lib/calories';
 import { initialProfile, type Conflict, type Food, type LocalRecord, type Meal, type Profile, type Target } from './types';
 import Today from './pages/Today';
@@ -32,12 +33,28 @@ export default function App() {
   const [page,setPage]=useState(currentPage);
   const [date,setDate]=useState(localDate());
   const [modal,setModal]=useState<'profile'|'account'|null>(null);
+  const [authError,setAuthError]=useState(() => authLinkError(new URL(window.location.href)) ?? '');
   const [composer,setComposer]=useState<{ slot?:Meal['slot']; meal?:LocalRecord<Meal>; food?:Food }|null>(null);
   const [notification,setNotification]=useState('');
   const [online,setOnline]=useState(navigator.onLine);
   const [syncText,setSyncText]=useState('Saved on this device'); const [queued,setQueued]=useState(0);
   const [conflictRows,setConflictRows]=useState<Conflict[]>([]);
-  useEffect(()=>{setModal(null);setComposer(null);setConflictRows([]);},[owner]);
+  useEffect(()=>{
+    setComposer(null);setConflictRows([]);
+    if(owner.startsWith('user:') && readSignInRequest()){
+      storeSignInRequest(null);setAuthError('');setModal('account');
+    } else setModal(null);
+  },[owner]);
+  useEffect(()=>{
+    if(!authError)return;
+    const url=new URL(window.location.href);
+    for(const key of ['error','error_code','error_description'])url.searchParams.delete(key);
+    const hash=new URLSearchParams(url.hash.slice(1));
+    for(const key of ['error','error_code','error_description'])hash.delete(key);
+    url.hash=hash.toString();
+    window.history.replaceState({},'',url.pathname+url.search+url.hash);
+    setModal('account');
+  },[authError]);
   const toast=useCallback((s:string)=>setNotification(s),[]);
   const run=useCallback(async(task:()=>Promise<unknown>,message?:string)=>{
     try { await task(); if(message) toast(message); } catch(error) { toast(error instanceof Error?error.message:'Something went wrong. Please try again.'); }
@@ -113,7 +130,7 @@ export default function App() {
     </div>
     {composer&&<FoodComposer {...composer} close={()=>setComposer(null)}/>}
     {modal==='profile'&&<ProfileEditor close={()=>setModal(null)}/>}
-    {modal==='account'&&<AccountPanel close={()=>setModal(null)} guestOwner={guestOwner} rotateGuest={rotateGuest}/>}
+    {modal==='account'&&<AccountPanel close={()=>{setModal(null);setAuthError('');}} guestOwner={guestOwner} rotateGuest={rotateGuest} authError={authError}/>}
     <div className="toast-anchor"><AnimatePresence>{notification&&<motion.div key={notification} className="toast" role="status"
       initial={reduce?false:{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:reduce?0:6}} transition={{duration:reduce?0:.18}}
     ><span>{notification}</span><button className="icon-btn" aria-label="Dismiss message" onClick={()=>setNotification('')}><X size={16}/></button></motion.div>}</AnimatePresence></div>

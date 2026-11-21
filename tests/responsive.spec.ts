@@ -161,6 +161,8 @@ for (const width of [320, 360, 390, 768, 1024, 1440]) {
       await fits(page, 'Account and export');
       await page.getByText('Delete this guest diary', { exact: true }).click();
       await fits(page, 'Account with expanded controls');
+      await page.getByText('Download a backup', { exact: true }).click();
+      await fits(page, 'Account with backup downloads');
       const download = page.waitForEvent('download');
       await page.getByRole('button', { name: 'Export JSON', exact: true }).click();
       expect((await download).suggestedFilename()).toBe('kgm-fit-export.json');
