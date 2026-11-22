@@ -4,9 +4,10 @@
   functions = "netlify/functions"
 
 [build.environment]
-  # These URL/publishable-key values are intentionally included in the browser.
+  # Public URLs/keys and the AI model identifier are not secrets. AI_MODEL also
+  # appears in server model options and documentation.
   # Keep private service-role and Gemini keys covered by secrets scanning.
-  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,AI_MODEL"
 
 [functions]
   node_bundler = "esbuild"

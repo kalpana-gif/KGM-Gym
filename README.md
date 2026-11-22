@@ -77,6 +77,8 @@ AI_MODEL=your_current_image_capable_model_id
 
 Photo AI works without Supabase or sign-in. Authenticated account deletion separately requires server-side `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SERVICE_ROLE_KEY`. Keep private keys on the server.
 
+`AI_MODEL` is a public model identifier, not a credential. `netlify.toml` excludes it from secret-value scanning so a configured model also mentioned in the server code or documentation does not block deployment. Gemini and service-role keys remain scanned.
+
 5. Redeploy after environment changes. Add the deployed URL to Supabase's allowed authentication redirects.
 6. Test `/food`, `/history`, `/plan`, `/workouts` and `/progress` by refreshing each URL. `/api/*` maps to functions before the SPA fallback.
 
