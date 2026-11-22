@@ -4,7 +4,7 @@ import { X, Leaf, Plus, ArrowUpRight } from 'lucide-react';
 import type { Food } from '../types';
 import { Context } from '../context';
 import BusyIndicator from './BusyIndicator';
-export function Modal({ title, children, close, wide = false, busy = false }: { title: string; children: ReactNode; close: () => void; wide?: boolean; busy?: boolean }) {
+export function Modal({ title, children, close, wide = false, busy = false, activity }: { title: string; children: ReactNode; close: () => void; wide?: boolean; busy?: boolean; activity?: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const context = useContext(Context);
   const headingId = useId();
@@ -19,7 +19,8 @@ export function Modal({ title, children, close, wide = false, busy = false }: { 
     transition={{ duration: reduce ? 0 : .2, ease: [.22, 1, .36, 1] }}
     onCancel={event => { event.preventDefault(); if (!busy) close(); }} onClick={e => { if (!busy && e.target === e.currentTarget) close(); }}>
     <div className="modal-head"><h2 id={headingId}>{title}</h2><button className="icon-btn" aria-label="Close dialog" disabled={busy} onClick={close}><X size={20} /></button></div>
-    <div className="modal-body" tabIndex={0}>{context?.working&&!busy&&<div className="modal-activity"><BusyIndicator title="Updating your space…" detail="Finishing your changes." /></div>}{children}</div>
+    {(activity || context?.working&&!busy) && <div className="modal-activity">{activity || <BusyIndicator title="Updating your space…" detail="Finishing your changes." />}</div>}
+    <div className="modal-body" tabIndex={0}>{children}</div>
   </motion.dialog>;
 }
 export function FoodMark({ food }: { food: Food }) {

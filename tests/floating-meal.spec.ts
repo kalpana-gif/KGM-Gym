@@ -1,9 +1,28 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const estimate = {
   foods: [{ name: 'Photo curry test', grams: 150, kcalMin: 250, kcalMax: 350, proteinGrams: 15, carbsGrams: 30, fatGrams: 12, assumptions: 'Simulated food and portion.' }],
   uncertainty: 'Simulated estimate for browser verification.',
 };
+
+async function holdDatabaseWrites(page: Page) {
+  await page.evaluate(() => new Promise<void>(resolve => {
+    const request = indexedDB.open('lankafit-v1', 1);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction(['records', 'operations'], 'readwrite');
+      let held = true;
+      const pump = () => {
+        if (!held) return;
+        tx.objectStore('records').get('test-save-lock').onsuccess = pump;
+      };
+      pump();
+      (window as unknown as { releaseMealSave: () => void }).releaseMealSave = () => { held = false; };
+      tx.oncomplete = () => db.close();
+      resolve();
+    };
+  }));
+}
 
 for (const width of [320, 390, 1000, 1440]) {
   test(`floating photo meal button fits and opens photos from every page at ${width}px`, async ({ page }) => {
@@ -66,6 +85,9 @@ for (const width of [320, 390, 1000, 1440]) {
     expect(await status.locator('.kgm-dot-spinner__dot').first().evaluate(element => getComputedStyle(element, '::before').animationName)).toBe(width === 1440 ? 'kgm-dot-pulse' : 'none');
     await dialog.locator('.photo-picker').scrollIntoViewIfNeeded();
     await expect(status).toBeInViewport();
+    const statusBounds = await status.boundingBox();
+    const bodyBounds = await dialog.locator('.modal-body').boundingBox();
+    expect(statusBounds!.y + statusBounds!.height).toBeLessThanOrEqual(bodyBounds!.y);
     await page.screenshot({ path: `artifacts/kgm-fit-photo-loading-${width}.png` });
     release();
     await expect(dialog.getByRole('region', { name: 'Photo estimate' })).toContainText('250–350 kcal');
@@ -97,27 +119,15 @@ test('saving shows feedback, locks the review, and completes after the database 
   await dialog.getByRole('button', { name: 'Search foods', exact: true }).click();
   await dialog.locator('.food-result').first().click();
   await dialog.getByLabel('Meal name', { exact: true }).fill('Pending save meal');
-  await page.evaluate(() => new Promise<void>(resolve => {
-    const request = indexedDB.open('lankafit-v1', 1);
-    request.onsuccess = () => {
-      const db = request.result;
-      const tx = db.transaction(['records', 'operations'], 'readwrite');
-      let held = true;
-      const pump = () => {
-        if (!held) return;
-        tx.objectStore('records').get('test-save-lock').onsuccess = pump;
-      };
-      pump();
-      (window as unknown as { releaseMealSave: () => void }).releaseMealSave = () => { held = false; };
-      tx.oncomplete = () => db.close();
-      resolve();
-    };
-  }));
+  await holdDatabaseWrites(page);
   await dialog.getByRole('button', { name: 'Confirm & save meal', exact: true }).click();
   const status = dialog.getByRole('status').filter({ hasText: 'Saving your meal…' });
   await expect(status).toBeVisible();
   await expect(status).toBeInViewport();
   await expect(dialog.locator('.modal-head')).toBeInViewport();
+  const statusBounds = await status.boundingBox();
+  const bodyBounds = await dialog.locator('.modal-body').boundingBox();
+  expect(statusBounds!.y + statusBounds!.height).toBeLessThanOrEqual(bodyBounds!.y);
   expect(await status.locator('.kgm-dot-spinner__dot').first().evaluate(element => getComputedStyle(element, '::before').animationName)).toBe('kgm-dot-pulse');
   await expect(dialog.getByRole('button', { name: 'Saving meal…', exact: true })).toBeDisabled();
   await expect(dialog.getByLabel('Meal name', { exact: true })).toBeDisabled();
@@ -128,4 +138,42 @@ test('saving shows feedback, locks the review, and completes after the database 
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Pending save meal/ })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Add meal from photo', exact: true })).toBeFocused();
+});
+
+test('checking photo AI shows the shared loader and clears it when ready', async ({ page }) => {
+  let release!: () => void;
+  const response = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/ai-status', async route => {
+    await response;
+    await route.fulfill({ json: { configured: true } });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add meal from photo', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'What’s on your plate?', exact: true });
+  const checking = dialog.getByRole('status').filter({ hasText: 'Checking photo AI…' });
+  await expect(checking.locator('.kgm-dot-spinner')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Estimate calories', exact: true })).toBeDisabled();
+  await page.screenshot({ path: 'artifacts/kgm-fit-photo-ai-checking.png' });
+  release();
+  await expect(checking).toHaveCount(0);
+  await dialog.locator('input[type=file]').setInputFiles('tests/fixtures/rice-and-curry.jpg');
+  await dialog.getByLabel(/Allow Google Gemini/).check();
+  await expect(dialog.getByRole('button', { name: 'Estimate calories', exact: true })).toBeEnabled();
+});
+
+
+test('mobile data saving uses the top bar without covering page content', async ({ page }) => {
+  await page.goto('/progress');
+  await page.getByLabel('Weight · kg', { exact: true }).fill('100');
+  await holdDatabaseWrites(page);
+  await page.getByRole('button', { name: 'Save weigh-in', exact: true }).click();
+  const connection = page.locator('.topbar .connection');
+  await expect(connection).toHaveAttribute('aria-label', 'Updating your space…');
+  await expect(connection.locator('.kgm-dot-spinner')).toBeVisible();
+  await expect(connection).toBeInViewport();
+  await expect(page.locator('.app-activity')).toBeHidden();
+  await page.screenshot({ path: 'artifacts/kgm-fit-mobile-data-saving.png' });
+  await page.evaluate(() => (window as unknown as { releaseMealSave: () => void }).releaseMealSave());
+  await expect(connection).toHaveAttribute('aria-label', 'Saved on device');
+  await expect(page.locator('.toast').filter({ hasText: 'Weigh-in saved.' })).toBeVisible();
 });

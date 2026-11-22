@@ -134,13 +134,13 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food, initia
   const activityTitle = activity === 'analyzing' ? 'Estimating your meal…' : activity === 'preparing' ? 'Preparing your photo…'
     : activity === 'draft' ? 'Saving your photo draft…' : activity === 'copying' ? 'Copying your meal…'
     : activity === 'deleting' ? 'Removing your meal…' : 'Saving your meal…';
-  return <Modal title={meal ? 'Review your meal' : 'What’s on your plate?'} close={close} wide busy={busy}>
-    {busy && <div className="modal-activity"><BusyIndicator kind={activity === 'analyzing' ? 'ai' : activity === 'preparing' ? 'photo' : 'save'} title={activityTitle}
+  return <Modal title={meal ? 'Review your meal' : 'What’s on your plate?'} close={close} wide busy={busy}
+    activity={busy ? <BusyIndicator kind={activity === 'analyzing' ? 'ai' : activity === 'preparing' ? 'photo' : 'save'} title={activityTitle}
       detail={activity === 'analyzing' ? 'Finding foods, portions and calories. You can review the estimate next.'
         : activity === 'preparing' ? 'Getting your image ready for review.'
         : activity === 'draft' ? 'Keeping this photo on your device.'
         : activity === 'saving' ? 'Saving this meal and updating your calories.'
-        : 'Updating your diary and daily totals.'} /></div>}
+        : 'Updating your diary and daily totals.'} /> : undefined}>
     <fieldset className="composer-fields" disabled={busy} aria-busy={busy}>
     <div className="tabs" role="group" aria-label="Meal entry method">{(['manual', 'text', 'photo'] as const).map(v => <button key={v} aria-pressed={mode === v} className={mode === v ? 'active' : ''} onClick={() => setMode(v)}>{v === 'manual' ? <Search size={16} /> : v === 'text' ? <Plus size={16} /> : <Camera size={16} />}{v === 'manual' ? 'Search foods' : v === 'text' ? 'Type a meal' : 'Meal photo'}</button>)}</div>
     {mode === 'manual' && <><label className="search-field"><Search size={18} /><input aria-label="Search foods" placeholder="Rice, parippu, chicken curry…" value={search} onChange={e => setSearch(e.target.value)} /></label><div className="food-results">{matches.map(f => <button key={f.id} className="food-result" onClick={() => add(f)}><FoodMark food={f} /><span><strong>{f.name}</strong><small>{Math.round(f.kcal)} kcal / 100 g · {f.state}</small></span><Plus size={17} /></button>)}</div>{!matches.length && <p className="subtext">No match. Add a custom food from the Food screen, or select a familiar alternative.</p>}</>}
@@ -148,7 +148,9 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food, initia
     {mode === 'photo' && <div className="photo-section">
       <ol className="photo-steps" aria-label="Photo meal steps"><li><span>1</span>Choose photo</li><li><span>2</span>Check foods</li><li><span>3</span>Save meal</li></ol>
       <p className="subtext">No sign-in needed. AI suggests foods and portions; you check them before saving.</p>
-      {unavailable && <div className="notice" role="status">{unavailable}</div>}
+      {unavailable && (online && aiStatus === 'checking'
+        ? <div className="photo-ai-check"><BusyIndicator kind="ai" title={unavailable} /></div>
+        : <div className="notice" role="status">{unavailable}</div>)}
       <label className={`photo-picker ${activity === 'analyzing' ? 'photo-analyzing' : ''}`}>{photo ? <img src={`data:${photo.mime};base64,${photo.base64}`} alt="Your meal draft" /> : <><Camera size={30} /><strong>Take or choose a meal photo</strong><span>JPEG, PNG or WebP · up to 12 MB before resizing</span></>}<input type="file" disabled={busy} accept="image/jpeg,image/png,image/webp" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) void prepare(f); }} />{activity === 'analyzing' && <span className="photo-scan" aria-hidden="true"><i /></span>}</label>
       <label>Optional description<textarea disabled={busy} placeholder="For example: rice, chicken curry, extra coconut milk" value={description} onChange={e => setDescription(e.target.value)} /></label>
       <label className="checkbox"><input type="checkbox" disabled={busy} checked={consent} onChange={e => setConsent(e.target.checked)} /><span>Allow Google Gemini to analyze this photo and description. Free-tier content may be used to improve its products.</span></label>
@@ -168,7 +170,7 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food, initia
     <div className="button-row composer-actions"><button className={`btn primary ${activity === 'saving' ? 'btn-busy' : ''}`} disabled={!items.length || busy || unresolved.length > 0} onClick={() => void commit()}>{activity === 'saving' ? <BusyGlyph /> : <Check size={17} />}{activity === 'saving' ? 'Saving meal…' : `Confirm & ${meal ? 'update' : 'save'} meal`}</button>{meal && <><button className="btn secondary" onClick={() => void write('copying', async () => {
       if (!date || !items.length || unresolved.length || items.some(i => !Number.isFinite(i.grams) || i.grams <= 0 || i.grams > 5000)) throw new Error('Choose a diary date, resolve foods and enter valid portions before copying.');
       await save(a.owner, 'meal_logs', { ...meal.data, name: name.trim() || meal.data.name, slot: mealSlot, date, timestamp: new Date().toISOString(), items: items.map(i => ({ ...i, id: crypto.randomUUID() })) }); close();
-    }, 'Meal copied to the selected diary day.')}><Plus size={16} />Copy to {date}</button><button className="btn danger" onClick={() => void write('deleting', async () => { await remove(meal); close(); }, 'Meal deleted. Restore it from the Food screen if needed.')}><Trash2 size={16} />Delete</button></>}</div>
+    }, 'Meal copied to the selected diary day.')}>{activity === 'copying' ? <BusyGlyph /> : <Plus size={16} />}{activity === 'copying' ? 'Copying meal…' : `Copy to ${date}`}</button><button className="btn danger" onClick={() => void write('deleting', async () => { await remove(meal); close(); }, 'Meal deleted. Restore it from the Food screen if needed.')}>{activity === 'deleting' ? <BusyGlyph /> : <Trash2 size={16} />}{activity === 'deleting' ? 'Removing meal…' : 'Delete'}</button></>}</div>
     </fieldset>
   </Modal>;
 }

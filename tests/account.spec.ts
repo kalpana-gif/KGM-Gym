@@ -84,6 +84,32 @@ test('provider rate limits show an inline retry message without losing the diary
   await expect(page.getByRole('heading',{name:/Small steps/})).toBeVisible();
 });
 
+test('resending an email shows the shared loader until the request completes', async ({page}) => {
+  await page.addInitScript(() => {
+    const sentAt = Date.now() - 120000;
+    localStorage.setItem('kgm-fit-sign-in-request', JSON.stringify({ email:'test@example.com', sentAt, retryAt:sentAt + 60000 }));
+  });
+  let release!: () => void;
+  const response = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/auth/v1/**', async route => {
+    if (route.request().url().includes('/otp')) {
+      await response;
+      await route.fulfill({ json:{} });
+    } else await route.fulfill({ status:401, json:{ message:'No test session' } });
+  });
+  await page.goto('/');
+  await page.getByRole('button',{ name:'Account and data', exact:true }).click();
+  await page.getByRole('button',{ name:'Send a new link', exact:true }).click();
+  const sending = page.getByRole('button',{ name:'Sending…', exact:true });
+  await expect(sending).toBeDisabled();
+  await expect(sending.locator('.kgm-dot-spinner')).toBeVisible();
+  await expect(page.getByRole('button',{ name:'Use a different email', exact:true })).toBeDisabled();
+  await page.screenshot({ path:'artifacts/kgm-fit-email-resending.png' });
+  release();
+  await expect(sending).toHaveCount(0);
+  await expect(page.getByRole('button',{ name:/Resend in \d+s/ })).toBeDisabled();
+});
+
 test('verified sign-in automatically imports the diary, recovers a failed upload and never imports it twice', async ({page}) => {
   const user = {id:'bb47df1f-e28c-437f-9b44-537b8d37e4a0',aud:'authenticated',role:'authenticated',email:'test@example.com',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-11-22T00:00:00Z'};
   const server = new Map<string,Map<string,unknown>>();
