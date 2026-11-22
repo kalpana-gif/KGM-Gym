@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Flame, LayoutDashboard, Utensils, CalendarDays, Dumbbell, ChartNoAxesCombined, History as HistoryIcon, Settings2, Cloud, CloudCheck, CloudUpload, CircleAlert, LoaderCircle, WifiOff, X } from 'lucide-react';
+import { Flame, Plus, Camera, LayoutDashboard, Utensils, CalendarDays, Dumbbell, ChartNoAxesCombined, History as HistoryIcon, Settings2, Cloud, CloudCheck, CloudUpload, CircleAlert, LoaderCircle, WifiOff, X } from 'lucide-react';
 import { Context } from './context';
 import { catalog } from './data/catalog';
 import { conflicts, records } from './lib/db';
@@ -19,6 +19,7 @@ import ProfileEditor from './components/ProfileEditor';
 import AccountPanel from './components/AccountPanel';
 import FoodComposer from './components/FoodComposer';
 import DatePicker from './components/DatePicker';
+import BusyIndicator from './components/BusyIndicator';
 import { PageTransition } from './components/motion';
 
 const pages = [{ key:'today',label:'Today',icon:LayoutDashboard },{ key:'food',label:'Food',icon:Utensils },{ key:'history',label:'History',icon:HistoryIcon },{ key:'plan',label:'Meal plan',icon:CalendarDays },{ key:'workouts',label:'Workouts',icon:Dumbbell },{ key:'progress',label:'Progress',icon:ChartNoAxesCombined }];
@@ -41,8 +42,10 @@ export default function App() {
   const [date,setDate]=useState(localDate());
   const [modal,setModal]=useState<'profile'|'account'|null>(null);
   const [authError,setAuthError]=useState(() => authLinkError(new URL(window.location.href)) ?? '');
-  const [composer,setComposer]=useState<{ slot?:Meal['slot']; meal?:LocalRecord<Meal>; food?:Food }|null>(null);
+  const [composer,setComposer]=useState<{ slot?:Meal['slot']; meal?:LocalRecord<Meal>; food?:Food; initialMode?:'manual'|'text'|'photo' }|null>(null);
+  const mealFab=useRef<HTMLButtonElement>(null);
   const [notification,setNotification]=useState('');
+  const [pendingTasks,setPendingTasks]=useState(0);
   const [online,setOnline]=useState(navigator.onLine);
   const [authReady,setAuthReady]=useState(() => !supabase || Boolean(savedAccountOwner()));
   const [authRevision,setAuthRevision]=useState(0);
@@ -66,7 +69,9 @@ export default function App() {
   },[authError]);
   const toast=useCallback((s:string)=>setNotification(s),[]);
   const run=useCallback(async(task:()=>Promise<unknown>,message?:string)=>{
+    setPendingTasks(count=>count+1);
     try { await task(); if(message) toast(message); } catch(error) { toast(error instanceof Error?error.message:'Something went wrong. Please try again.'); }
+    finally { setPendingTasks(count=>count-1); }
   },[toast]);
   const refresh=useCallback(async()=>{
     const requested=owner;
@@ -184,19 +189,23 @@ export default function App() {
     : online?'Saved on device':'Offline mode';
   const StatusIcon = !online ? WifiOff : syncIssue ? CircleAlert : syncBusy && connected ? LoaderCircle : syncState.status === 'synced' ? CloudCheck : CloudUpload;
   const content=page==='food'?<FoodPage/>:page==='history'?<History/>:page==='plan'?<Plan/>:page==='workouts'?<Workouts/>:page==='progress'?<Progress/>:<Today/>;
-  return <Context.Provider value={{owner,rows,profile,date,setDate,target,foods,toast,run,openProfile:()=>setModal('profile'),openAccount:()=>setModal('account'),openFood,navigate,conflicts:conflictRows,syncState,syncNow}}>
+  return <Context.Provider value={{owner,rows,profile,date,setDate,target,foods,toast,run,working:pendingTasks>0,openProfile:()=>setModal('profile'),openAccount:()=>setModal('account'),openFood,navigate,conflicts:conflictRows,syncState,syncNow}}>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <div className="app-shell">
       <aside className="sidebar"><a className="brand" href="/" onClick={e=>{e.preventDefault();navigate('today');}}><span><Flame size={24}/></span>KGM<span className="brand-fit">-FIT</span><small>YOUR EVERYDAY COMPANION</small></a><div className="nav-label">YOUR SPACE</div><nav aria-label="Main navigation">{pages.map(p=><motion.button key={p.key} aria-current={page===p.key?'page':undefined} className={page===p.key?'active':''} whileTap={reduce?undefined:{scale:.98}} onClick={()=>navigate(p.key)}>{page===p.key&&<motion.span aria-hidden="true" className="nav-highlight" layoutId="desktop-nav" transition={{type:'spring',stiffness:420,damping:36,duration:reduce?0:undefined}}/>}<p.icon size={20}/><span>{p.label}</span>{page===p.key&&<i/>}</motion.button>)}</nav><div className="sidebar-bottom"><div className="sidebar-note"><Flame size={24}/><h3>A little better,<br/>every day.</h3><p>You don’t have to change everything to change something.</p><div className="palette-dots" aria-hidden="true"><i/><i/><i/><i/></div></div><button className="sidebar-settings" onClick={()=>setModal('profile')}><Settings2 size={18}/>Your preferences</button><button className="profile-button" onClick={()=>setModal('account')}><span className="avatar">KG</span><div><strong>My journey</strong><small>{owner.startsWith('user:')?'Connected account':'Device-only guest'}</small></div><Cloud size={17}/></button></div></aside>
       <div className="main-shell"><header className="topbar"><a className="mobile-brand" href="/" onClick={e=>{e.preventDefault();navigate('today');}}><Flame size={22}/>KGM-FIT</a><div className="breadcrumb">My space <span>/</span> <strong>{pages.find(p=>p.key===page)?.label}</strong></div><div className="top-actions"><span className={`connection ${online?'':'offline'} ${syncIssue?'sync-error':''}`} title={connected?syncState.message:statusLabel} aria-label={statusLabel}>{connected || !online ? <StatusIcon size={15} className={syncBusy&&connected?'account-spinner':undefined}/> : <span className="status-dot"/>}<span className="connection-label">{statusLabel}</span></span><button className="icon-btn" aria-label="Account and data" onClick={()=>setModal('account')}><Cloud size={20}/></button><button className="icon-btn" aria-label="Your preferences" onClick={()=>setModal('profile')}><Settings2 size={20}/></button></div></header>
         <main id="main-content" tabIndex={-1}><DatePicker value={date} onChange={setDate} timezone={profile.timezone} navigation />
-          {loadError?<div className="warning">{loadError}</div>:loading||!authReady?<div className="loading"><Flame size={30}/><p>Opening your space…</p></div>:<PageTransition key={`${owner}:${page}`}>{content}</PageTransition>}
+          {loadError?<div className="warning">{loadError}</div>:loading||!authReady?<div className="loading"><BusyIndicator title="Opening your space…" detail="Getting your diary ready." /></div>:<PageTransition key={`${owner}:${page}`}>{content}</PageTransition>}
           <footer className="page-footer"><span><Flame size={14}/>KGM-FIT</span><p>Small steps. Lasting change.</p><button className="text-btn" onClick={()=>setModal('account')}>Privacy & your data</button></footer>
         </main>
       </div>
       <nav className="bottom-nav" aria-label="Mobile navigation">{pages.map(p=><motion.button key={p.key} aria-current={page===p.key?'page':undefined} className={page===p.key?'active':''} whileTap={reduce?undefined:{scale:.94}} onClick={()=>navigate(p.key)}>{page===p.key&&<motion.span aria-hidden="true" className="nav-highlight" layoutId="mobile-nav" transition={{type:'spring',stiffness:420,damping:36,duration:reduce?0:undefined}}/>}<p.icon size={20}/><span>{p.key==='plan'?'Plan':p.label}</span></motion.button>)}</nav>
     </div>
-    {composer&&<FoodComposer {...composer} close={()=>setComposer(null)}/>}
+    {!composer&&!modal&&!loading&&authReady&&!loadError&&<motion.button ref={mealFab} type="button" className="meal-fab" aria-label="Add meal from photo" title="Take a photo and estimate meal calories" whileTap={reduce?undefined:{scale:.95}} onClick={()=>setComposer({initialMode:'photo'})}>
+      <span className="meal-fab-symbol" aria-hidden="true"><Plus size={28}/><span className="meal-fab-camera"><Camera size={12}/></span></span><span className="meal-fab-label">Add meal</span>
+    </motion.button>}
+    {pendingTasks>0&&!composer&&!modal&&<div className="app-activity"><BusyIndicator title="Updating your space…" detail="Finishing your changes." /></div>}
+    {composer&&<FoodComposer {...composer} close={()=>{setComposer(null);if(composer.initialMode==='photo')requestAnimationFrame(()=>mealFab.current?.focus({preventScroll:true}));}}/>}
     {modal==='profile'&&<ProfileEditor close={()=>setModal(null)}/>}
     {modal==='account'&&<AccountPanel close={()=>{setModal(null);setAuthError('');}} guestOwner={guestOwner} rotateGuest={rotateGuest} authError={authError}/>}
     <div className="toast-anchor"><AnimatePresence>{notification&&<motion.div key={notification} className="toast" role="status"

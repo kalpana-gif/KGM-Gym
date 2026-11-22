@@ -1,9 +1,12 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useContext, useEffect, useId, useRef, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { X, Leaf, Plus, ArrowUpRight } from 'lucide-react';
 import type { Food } from '../types';
-export function Modal({ title, children, close, wide = false }: { title: string; children: ReactNode; close: () => void; wide?: boolean }) {
+import { Context } from '../context';
+import BusyIndicator from './BusyIndicator';
+export function Modal({ title, children, close, wide = false, busy = false }: { title: string; children: ReactNode; close: () => void; wide?: boolean; busy?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const context = useContext(Context);
   const headingId = useId();
   const reduce = useReducedMotion();
   useEffect(() => {
@@ -14,9 +17,9 @@ export function Modal({ title, children, close, wide = false }: { title: string;
     initial={reduce ? false : { opacity: 0, y: 14, scale: .985 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
     transition={{ duration: reduce ? 0 : .2, ease: [.22, 1, .36, 1] }}
-    onCancel={close} onClick={e => { if (e.target === e.currentTarget) close(); }}>
-    <div className="modal-head"><h2 id={headingId}>{title}</h2><button className="icon-btn" aria-label="Close dialog" onClick={close}><X size={20} /></button></div>
-    <div className="modal-body" tabIndex={0}>{children}</div>
+    onCancel={event => { event.preventDefault(); if (!busy) close(); }} onClick={e => { if (!busy && e.target === e.currentTarget) close(); }}>
+    <div className="modal-head"><h2 id={headingId}>{title}</h2><button className="icon-btn" aria-label="Close dialog" disabled={busy} onClick={close}><X size={20} /></button></div>
+    <div className="modal-body" tabIndex={0}>{context?.working&&!busy&&<div className="modal-activity"><BusyIndicator title="Updating your space…" detail="Finishing your changes." /></div>}{children}</div>
   </motion.dialog>;
 }
 export function FoodMark({ food }: { food: Food }) {

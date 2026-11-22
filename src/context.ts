@@ -5,6 +5,7 @@ export type AppContext = {
   owner: string; rows: LocalRecord[]; profile: Profile; date: string; setDate: (s: string) => void;
   target?: Target; foods: Food[]; toast: (s: string) => void;
   run: (task: () => Promise<unknown>, message?: string) => Promise<void>;
+  working: boolean;
   openProfile: () => void; openAccount: () => void;
   openFood: (slot?: Meal['slot'], meal?: LocalRecord<Meal>, food?: Food) => void;
   navigate: (page: string) => void; conflicts: Conflict[];

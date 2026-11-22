@@ -3,6 +3,7 @@ import { Camera, Plus, Search, Trash2, Check, Save, Sparkles } from 'lucide-reac
 import { useApp } from '../context';
 import { FoodMark, Modal } from './ui';
 import DatePicker from './DatePicker';
+import BusyIndicator, { BusyGlyph } from './BusyIndicator';
 import { records, remove, save } from '../lib/db';
 import { parseFoodText, type Parsed } from '../lib/parser';
 import { supabase } from '../lib/cloud';
@@ -12,10 +13,11 @@ import { estimatePhoto, photoMealItems, type PhotoEstimate } from '../lib/ai';
 import type { Food, LocalRecord, Meal, MealItem, PhotoDraft } from '../types';
 
 type PendingFood = Parsed & { grams?: number; source?: 'photo' };
+type Activity = 'preparing' | 'analyzing' | 'saving' | 'draft' | 'copying' | 'deleting';
 
-export default function FoodComposer({ close, slot = 'lunch', meal, food }: { close: () => void; slot?: Meal['slot']; meal?: LocalRecord<Meal>; food?: Food }) {
+export default function FoodComposer({ close, slot = 'lunch', meal, food, initialMode = 'manual' }: { close: () => void; slot?: Meal['slot']; meal?: LocalRecord<Meal>; food?: Food; initialMode?: 'manual' | 'text' | 'photo' }) {
   const a = useApp();
-  const [mode, setMode] = useState<'manual' | 'text' | 'photo'>('manual');
+  const [mode, setMode] = useState<'manual' | 'text' | 'photo'>(initialMode);
   const [name, setName] = useState(meal?.data.name ?? '');
   const [mealSlot, setMealSlot] = useState<Meal['slot']>(meal?.data.slot ?? slot);
   const [date, setDate] = useState(meal?.data.date ?? a.date);
@@ -25,17 +27,22 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food }: { cl
   const [photo, setPhoto] = useState<{ mime: string; base64: string } | null>(null);
   const [description, setDescription] = useState('');
   const [consent, setConsent] = useState(a.profile.aiConsent);
-  const [busy, setBusy] = useState(false);
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const busy = activity !== null;
   const [estimate, setEstimate] = useState<PhotoEstimate | null>(meal?.data.photoEstimate ?? null);
   const [aiItemIds, setAiItemIds] = useState<string[]>(meal?.data.items.filter(item => item.source === 'photo').map(item => item.id) ?? []);
   const [aiError, setAiError] = useState('');
   const [aiStatus, setAiStatus] = useState<'checking' | 'configured' | 'unavailable'>('checking');
   const [online, setOnline] = useState(navigator.onLine);
-  const analyzing = useRef(false);
-  const saving = useRef(false);
+  const active = useRef(false);
   const savedMealId = useRef(meal?.id);
   const [draftId, setDraftId] = useState<string | undefined>();
   const [retain, setRetain] = useState(false);
+  const start = (next: Activity) => {
+    if (active.current) return false;
+    active.current = true; setActivity(next); return true;
+  };
+  const finish = () => { active.current = false; setActivity(null); };
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     window.addEventListener('online', update); window.addEventListener('offline', update);
@@ -68,9 +75,10 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food }: { cl
     : aiStatus === 'unavailable' ? 'Photo AI is not connected yet. You can still save a photo or search foods.'
     : '';
   const analyze = async () => {
-    if (analyzing.current) return;
+    if (active.current) return;
     if (unavailable || !consent) { setAiError(unavailable || 'Allow photo sharing before requesting an estimate.'); return; }
-    analyzing.current = true; setBusy(true); setAiError('');
+    if (!start('analyzing')) return;
+    setAiError('');
     try {
       if (!photo) throw new Error('Choose a meal photo first.');
       const result = await estimatePhoto({ ...photo, description, consent: true });
@@ -84,15 +92,23 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food }: { cl
       if (profile && !a.profile.aiConsent) await a.run(() => save(a.owner, 'profiles', { ...a.profile, aiConsent: true }, profile.id));
     } catch (error) {
       setAiError(error instanceof Error ? error.message : 'Photo AI is unavailable. Try again or search foods.');
-    } finally { analyzing.current = false; setBusy(false); }
+    } finally { finish(); }
   };
-  const storeDraft = () => a.run(async () => {
+  const prepare = async (file: File) => {
+    if (!start('preparing')) return;
+    try { await a.run(async () => { const prepared = await preparePhoto(file); resetPhotoReview(); setPhoto(prepared); setDraftId(undefined); }); }
+    finally { finish(); }
+  };
+  const write = async (next: Activity, task: () => Promise<unknown>, message: string) => {
+    if (!start(next)) return;
+    try { await a.run(task, message); } finally { finish(); }
+  };
+  const storeDraft = () => write('draft', async () => {
     if (!photo) throw new Error('Choose a photo first.');
     const record = await save(a.owner, 'photo_metadata', { ...photo, description, date, analyzed: false }, draftId); setDraftId(record.id);
   }, 'Photo draft saved on this device. Analyze it when you’re online.');
   const commit = async () => {
-    if (saving.current || analyzing.current) return;
-    saving.current = true; setBusy(true);
+    if (!start('saving')) return;
     try { await a.run(async () => {
     if (unresolved.length) throw new Error('Resolve or explicitly remove unmatched foods before saving.');
     if (!items.length || items.some(i => !Number.isFinite(i.grams) || i.grams <= 0 || i.grams > 5000)) throw new Error('Add foods with portions between 1 and 5,000 g.');
@@ -112,10 +128,20 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food }: { cl
     if (draftId) { const draft = (await records(a.owner, 'photo_metadata')).find(r => r.id === draftId); if (draft) await remove(draft); }
     close();
     }, meal ? 'Meal updated.' : 'Meal saved. Your daily totals are updated.'); }
-    finally { saving.current = false; setBusy(false); }
+    finally { finish(); }
   };
   const draftRows = a.rows.filter(r => r.entity === 'photo_metadata');
-  return <Modal title={meal ? 'Review your meal' : 'What’s on your plate?'} close={close} wide>
+  const activityTitle = activity === 'analyzing' ? 'Estimating your meal…' : activity === 'preparing' ? 'Preparing your photo…'
+    : activity === 'draft' ? 'Saving your photo draft…' : activity === 'copying' ? 'Copying your meal…'
+    : activity === 'deleting' ? 'Removing your meal…' : 'Saving your meal…';
+  return <Modal title={meal ? 'Review your meal' : 'What’s on your plate?'} close={close} wide busy={busy}>
+    {busy && <div className="modal-activity"><BusyIndicator kind={activity === 'analyzing' ? 'ai' : activity === 'preparing' ? 'photo' : 'save'} title={activityTitle}
+      detail={activity === 'analyzing' ? 'Finding foods, portions and calories. You can review the estimate next.'
+        : activity === 'preparing' ? 'Getting your image ready for review.'
+        : activity === 'draft' ? 'Keeping this photo on your device.'
+        : activity === 'saving' ? 'Saving this meal and updating your calories.'
+        : 'Updating your diary and daily totals.'} /></div>}
+    <fieldset className="composer-fields" disabled={busy} aria-busy={busy}>
     <div className="tabs" role="group" aria-label="Meal entry method">{(['manual', 'text', 'photo'] as const).map(v => <button key={v} aria-pressed={mode === v} className={mode === v ? 'active' : ''} onClick={() => setMode(v)}>{v === 'manual' ? <Search size={16} /> : v === 'text' ? <Plus size={16} /> : <Camera size={16} />}{v === 'manual' ? 'Search foods' : v === 'text' ? 'Type a meal' : 'Meal photo'}</button>)}</div>
     {mode === 'manual' && <><label className="search-field"><Search size={18} /><input aria-label="Search foods" placeholder="Rice, parippu, chicken curry…" value={search} onChange={e => setSearch(e.target.value)} /></label><div className="food-results">{matches.map(f => <button key={f.id} className="food-result" onClick={() => add(f)}><FoodMark food={f} /><span><strong>{f.name}</strong><small>{Math.round(f.kcal)} kcal / 100 g · {f.state}</small></span><Plus size={17} /></button>)}</div>{!matches.length && <p className="subtext">No match. Add a custom food from the Food screen, or select a familiar alternative.</p>}</>}
     {mode === 'text' && <><label>Describe your meal<textarea rows={3} placeholder="150 g cooked red rice, 100 g chicken curry, and 2 eggs" value={text} onChange={e => setText(e.target.value)} /></label><p className="fineprint">Works offline for known foods. Grams are best; cups and plates need a serving selection.</p><button className="btn secondary" disabled={!text.trim()} onClick={parse}><Plus size={16} />Review foods</button></>}
@@ -123,11 +149,11 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food }: { cl
       <ol className="photo-steps" aria-label="Photo meal steps"><li><span>1</span>Choose photo</li><li><span>2</span>Check foods</li><li><span>3</span>Save meal</li></ol>
       <p className="subtext">No sign-in needed. AI suggests foods and portions; you check them before saving.</p>
       {unavailable && <div className="notice" role="status">{unavailable}</div>}
-      <label className="photo-picker">{photo ? <img src={`data:${photo.mime};base64,${photo.base64}`} alt="Your meal draft" /> : <><Camera size={30} /><strong>Take or choose a meal photo</strong><span>JPEG, PNG or WebP · up to 12 MB before resizing</span></>}<input type="file" disabled={busy} accept="image/jpeg,image/png,image/webp" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) void a.run(async () => { const prepared = await preparePhoto(f); resetPhotoReview(); setPhoto(prepared); setDraftId(undefined); }); }} /></label>
+      <label className={`photo-picker ${activity === 'analyzing' ? 'photo-analyzing' : ''}`}>{photo ? <img src={`data:${photo.mime};base64,${photo.base64}`} alt="Your meal draft" /> : <><Camera size={30} /><strong>Take or choose a meal photo</strong><span>JPEG, PNG or WebP · up to 12 MB before resizing</span></>}<input type="file" disabled={busy} accept="image/jpeg,image/png,image/webp" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) void prepare(f); }} />{activity === 'analyzing' && <span className="photo-scan" aria-hidden="true"><i /></span>}</label>
       <label>Optional description<textarea disabled={busy} placeholder="For example: rice, chicken curry, extra coconut milk" value={description} onChange={e => setDescription(e.target.value)} /></label>
       <label className="checkbox"><input type="checkbox" disabled={busy} checked={consent} onChange={e => setConsent(e.target.checked)} /><span>Allow Google Gemini to analyze this photo and description. Free-tier content may be used to improve its products.</span></label>
       <p className="fineprint">Only this meal is shared. Your identity, health profile and diary are excluded.</p>
-      <div className="button-row"><button className="btn primary" disabled={busy || !photo || !consent || Boolean(unavailable)} onClick={() => void analyze()}><Sparkles size={16} />{busy ? 'Estimating…' : estimate ? 'Estimate again' : 'Estimate calories'}</button><button className="btn secondary" disabled={!photo || busy} onClick={() => void storeDraft()}><Save size={16} />Save offline draft</button></div>
+      <div className="button-row"><button className={`btn primary ${activity === 'analyzing' ? 'btn-busy' : ''}`} disabled={busy || !photo || !consent || Boolean(unavailable)} onClick={() => void analyze()}>{activity === 'analyzing' ? <BusyGlyph /> : <Sparkles size={16} />}{activity === 'analyzing' ? 'Estimating…' : estimate ? 'Estimate again' : 'Estimate calories'}</button><button className="btn secondary" disabled={!photo || busy} onClick={() => void storeDraft()}>{activity === 'draft' ? <BusyGlyph /> : <Save size={16} />}{activity === 'draft' ? 'Saving draft…' : 'Save offline draft'}</button></div>
       {aiError && <div className="warning" role="alert"><p>{aiError}</p><button className="btn secondary" onClick={() => setMode('manual')}>Search foods instead</button></div>}
       <p className="fineprint">Photo calories are approximate. Oil, sauces and portion sizes can change the result.</p>
       {draftRows.length > 0 && <details className="details"><summary>Saved photo drafts ({draftRows.length})</summary>{draftRows.map(r => <div className="button-row" key={r.id}><button className="text-btn" disabled={busy} onClick={() => { resetPhotoReview(); const d = r.data as PhotoDraft; setPhoto({ mime: d.mime, base64: d.base64 }); setDescription(d.description); setDate(d.date); setDraftId(r.id); }}>Open {((r.data as PhotoDraft).description || 'meal draft').slice(0, 40)} · {(r.data as PhotoDraft).date}</button><button className="icon-btn" aria-label="Delete photo draft" onClick={() => void a.run(() => remove(r), 'Photo draft deleted.')}><Trash2 size={15} /></button></div>)}</details>}
@@ -139,9 +165,10 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food }: { cl
       {items.map(i => <div className="review-item" key={i.id}><FoodMark food={i.food} /><div className="review-food"><strong>{i.food.name}</strong><small>{i.food.uncertainty} · {Math.round(i.food.kcal * i.grams / 100)} kcal</small>{i.food.uncertainty === 'ai estimate' && <label>Food name<input aria-label={`Food name for ${i.food.name}`} value={i.food.name} onChange={event => setItems(rows => rows.map(row => row.id === i.id ? { ...row, food: { ...row.food, name: event.target.value } } : row))} /></label>}<details><summary>Nutrition source</summary><p className="fineprint">{i.food.source}</p>{i.food.instructions && <p className="fineprint">{i.food.instructions}</p>}</details></div><div className="portion"><label>Grams<input type="number" min="1" max="5000" step="1" value={i.grams || ''} onChange={e => setItems(rows => rows.map(r => r.id === i.id ? { ...r, grams: +e.target.value } : r))} /></label>{i.food.uncertainty === 'ai estimate' && <label>Calories · kcal<input aria-label={`Calories for ${i.food.name}`} type="number" min="0" max="10000" step="1" value={Math.round(i.food.kcal * i.grams / 100)} onChange={event => { const calories = +event.target.value; if (i.grams > 0) setItems(rows => rows.map(row => row.id === i.id ? { ...row, food: { ...row.food, kcal: calories / row.grams * 100 } } : row)); }} /></label>}<select aria-label={`Serving for ${i.food.name}`} value="" onChange={e => { const grams = +e.target.value; if (grams) setItems(rows => rows.map(r => r.id === i.id ? { ...r, grams } : r)); }}><option value="">Use serving…</option>{i.food.servings.map((s, j) => <option value={s.grams} key={j}>{s.label} · {s.grams} g{s.approximate ? ' approx.' : ''}</option>)}</select></div><button className="icon-btn" aria-label={`Remove ${i.food.name}`} onClick={() => setItems(rows => rows.filter(r => r.id !== i.id))}><Trash2 size={16} /></button></div>)}
     </div>
     <div className="form-grid"><label>Meal name<input placeholder="e.g. Rice & curry" value={name} onChange={e => setName(e.target.value)} /></label><label>Meal<select value={mealSlot} onChange={e => setMealSlot(e.target.value as Meal['slot'])}>{['breakfast', 'lunch', 'dinner', 'snacks'].map(s => <option key={s} value={s}>{s}</option>)}</select></label><DatePicker value={date} onChange={setDate} timezone={a.profile.timezone} /><div className="macro-summary">{Math.round(sum.protein)} g protein · {Math.round(sum.carbs)} g carbs · {Math.round(sum.fat)} g fat</div></div>
-    <div className="button-row composer-actions"><button className="btn primary" disabled={!items.length || busy || unresolved.length > 0} onClick={() => void commit()}><Check size={17} />Confirm & {meal ? 'update' : 'save'} meal</button>{meal && <><button className="btn secondary" onClick={() => void a.run(async () => {
+    <div className="button-row composer-actions"><button className={`btn primary ${activity === 'saving' ? 'btn-busy' : ''}`} disabled={!items.length || busy || unresolved.length > 0} onClick={() => void commit()}>{activity === 'saving' ? <BusyGlyph /> : <Check size={17} />}{activity === 'saving' ? 'Saving meal…' : `Confirm & ${meal ? 'update' : 'save'} meal`}</button>{meal && <><button className="btn secondary" onClick={() => void write('copying', async () => {
       if (!date || !items.length || unresolved.length || items.some(i => !Number.isFinite(i.grams) || i.grams <= 0 || i.grams > 5000)) throw new Error('Choose a diary date, resolve foods and enter valid portions before copying.');
       await save(a.owner, 'meal_logs', { ...meal.data, name: name.trim() || meal.data.name, slot: mealSlot, date, timestamp: new Date().toISOString(), items: items.map(i => ({ ...i, id: crypto.randomUUID() })) }); close();
-    }, 'Meal copied to the selected diary day.')}><Plus size={16} />Copy to {date}</button><button className="btn danger" onClick={() => void a.run(async () => { await remove(meal); close(); }, 'Meal deleted. Restore it from the Food screen if needed.')}><Trash2 size={16} />Delete</button></>}</div>
+    }, 'Meal copied to the selected diary day.')}><Plus size={16} />Copy to {date}</button><button className="btn danger" onClick={() => void write('deleting', async () => { await remove(meal); close(); }, 'Meal deleted. Restore it from the Food screen if needed.')}><Trash2 size={16} />Delete</button></>}</div>
+    </fieldset>
   </Modal>;
 }
