@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Cloud, Download, LogOut, Trash2, RefreshCw, Mail, Check, ShieldCheck, Smartphone, ArrowUpRight, LoaderCircle, CheckCircle2 } from 'lucide-react';
+import { Cloud, Download, LogOut, Trash2, RefreshCw, Mail, Check, ShieldCheck, Smartphone, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context';
 import { Modal } from './ui';
+import DotSpinner from './DotSpinner';
 import { authenticatedRequest, cloudConfigured, supabase } from '../lib/cloud';
 import { clearOwner, dismissConflict, records, save } from '../lib/db';
 import { inboxLink, readSignInRequest, signInError, storeSignInRequest, type SignInRequest } from '../lib/account';
@@ -94,7 +95,7 @@ export default function AccountPanel({ close, rotateGuest, authError = '' }: { c
               <form onSubmit={e => { e.preventDefault(); void sendLink(); }}>
                 <label>Email address<input type="email" required autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} disabled={sending} aria-describedby="account-email-help"/></label>
                 <p id="account-email-help" className="fineprint">We’ll email you a secure sign-in link. No password to remember.</p>
-                <button className="btn primary full" disabled={sending || remaining > 0}>{sending ? <LoaderCircle size={17} className="account-spinner"/> : <Mail size={17}/>} {sending ? 'Sending your link…' : remaining ? `Try again in ${remaining}s` : 'Continue with email'}</button>
+                <button className="btn primary full" disabled={sending || remaining > 0}>{sending ? <DotSpinner compact/> : <Mail size={17}/>} {sending ? 'Sending your link…' : remaining ? `Try again in ${remaining}s` : 'Continue with email'}</button>
               </form>
             </>}
             {error && <p className="account-error" role="alert">{error}</p>}
@@ -107,7 +108,7 @@ export default function AccountPanel({ close, rotateGuest, authError = '' }: { c
         <section className="account-sync"><div><Cloud size={22}/><div><h3>Automatic cloud sync</h3><p>Your diary is stored in Supabase and kept up to date across your signed-in devices.</p><p>{a.syncState.pending > 0 ? `${a.syncState.pending} ${a.syncState.pending === 1 ? 'change waiting' : 'changes waiting'} to sync` : cloudBusy ? 'Verifying and synchronizing your diary…' : 'New entries sync automatically when online.'}</p></div></div>
           <p className={`account-sync-message ${a.syncState.status === 'synced' ? 'done' : syncFailed ? 'error' : ''}`} role={syncFailed ? 'alert' : 'status'}>{a.syncState.status === 'synced' && <CheckCircle2 size={17}/>} {a.syncState.message}</p>
           {a.syncState.lastSyncedAt && <p className="fineprint">Last successful sync: {new Date(a.syncState.lastSyncedAt).toLocaleString('en-GB', { timeZone: a.profile.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
-          <button className="btn secondary full" disabled={cloudBusy} onClick={() => void a.syncNow()}><RefreshCw size={17} className={cloudBusy ? 'account-spinner' : undefined}/>{cloudBusy ? 'Syncing…' : 'Sync now'}</button>
+          <button className="btn secondary full" disabled={cloudBusy} onClick={() => void a.syncNow()}>{cloudBusy ? <DotSpinner compact/> : <RefreshCw size={17}/>}{cloudBusy ? 'Syncing…' : 'Sync now'}</button>
           <p className="fineprint">You stay signed in when you close or reopen the app. Your session renews automatically. Offline edits wait safely on this device and upload after reconnecting. The app checks for changes from your other devices every minute and when you return.</p>
         </section>
         <button className="text-btn account-signout" disabled={cloudBusy} onClick={() => void a.run(async () => {

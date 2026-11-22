@@ -38,7 +38,7 @@ for (const width of [320, 390, 1000, 1440]) {
 
   test(`photo analysis shows loading, permits calorie review and saves once at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.emulateMedia({ reducedMotion: width === 1440 ? 'no-preference' : 'reduce' });
     await page.route('**/api/ai-status', route => route.fulfill({ json: { configured: true } }));
     let release!: () => void;
     const response = new Promise<void>(resolve => { release = resolve; });
@@ -63,7 +63,7 @@ for (const width of [320, 390, 1000, 1440]) {
     await expect(dialog.getByRole('button', { name: 'Search foods', exact: true })).toBeDisabled();
     await page.keyboard.press('Escape');
     await expect(dialog).toBeVisible();
-    expect(await status.locator('.busy-orbit').evaluate(element => getComputedStyle(element, '::before').animationName)).toBe('none');
+    expect(await status.locator('.kgm-dot-spinner__dot').first().evaluate(element => getComputedStyle(element, '::before').animationName)).toBe(width === 1440 ? 'kgm-dot-pulse' : 'none');
     await dialog.locator('.photo-picker').scrollIntoViewIfNeeded();
     await expect(status).toBeInViewport();
     await page.screenshot({ path: `artifacts/kgm-fit-photo-loading-${width}.png` });
@@ -79,10 +79,13 @@ for (const width of [320, 390, 1000, 1440]) {
     await expect(page.getByRole('button', { name: /Floating photo meal/ })).toHaveCount(1);
     await expect(page.locator('.review-section')).toHaveCount(0);
     await expect(page.locator('.calorie-stats').getByText('375 kcal', { exact: true })).toBeVisible();
-    await expect(page.locator('.toast')).toBeVisible();
-    const toastBounds = await page.locator('.toast').boundingBox();
+    const savedToast = page.locator('.toast').filter({ hasText: 'Meal saved. Your daily totals are updated.' });
+    await expect(savedToast).toBeVisible();
     const fabBounds = await page.getByRole('button', { name: 'Add meal from photo', exact: true }).boundingBox();
-    expect(toastBounds!.y + toastBounds!.height).toBeLessThanOrEqual(fabBounds!.y);
+    await expect.poll(async () => {
+      const bounds = await savedToast.boundingBox();
+      return bounds!.y + bounds!.height;
+    }).toBeLessThanOrEqual(fabBounds!.y);
     expect(calls).toBe(1);
   });
 }
@@ -115,7 +118,7 @@ test('saving shows feedback, locks the review, and completes after the database 
   await expect(status).toBeVisible();
   await expect(status).toBeInViewport();
   await expect(dialog.locator('.modal-head')).toBeInViewport();
-  expect(await status.locator('.busy-orbit').evaluate(element => getComputedStyle(element, '::before').animationName)).toBe('busy-ripple');
+  expect(await status.locator('.kgm-dot-spinner__dot').first().evaluate(element => getComputedStyle(element, '::before').animationName)).toBe('kgm-dot-pulse');
   await expect(dialog.getByRole('button', { name: 'Saving meal…', exact: true })).toBeDisabled();
   await expect(dialog.getByLabel('Meal name', { exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
