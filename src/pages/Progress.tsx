@@ -5,6 +5,7 @@ import { useApp } from '../context';
 import { addDays, dateLabel, localDate, total } from '../lib/calories';
 import { save } from '../lib/db';
 import { Empty, SectionHead } from '../components/ui';
+import DatePicker from '../components/DatePicker';
 import type { Meal, Weight } from '../types';
 
 export default function Progress() {
@@ -32,7 +33,7 @@ export default function Progress() {
         const profile = a.rows.find(r => r.entity === 'profiles');
         if (profile) await save(a.owner,'profiles',{ ...a.profile,weight:value },profile.id);
       }
-    }, 'Weigh-in saved. Review your calculator if you want to update the target.'); }}><label>Weight · kg<input type="number" min="30" max="350" step=".1" required value={kg} onChange={e => setKg(e.target.value)} /></label><label>Date<input type="date" required value={date} onChange={e => setDate(e.target.value)} /></label><button className="btn primary full"><Plus size={16} />Save weigh-in</button></form><p className="fineprint">Weigh under similar conditions. A new weight does not silently change your approved calorie target.</p></section></div>
+    }, 'Weigh-in saved. Review your calculator if you want to update the target.'); }}><label>Weight · kg<input type="number" min="30" max="350" step=".1" required value={kg} onChange={e => setKg(e.target.value)} /></label><DatePicker label="Date" value={date} onChange={setDate} timezone={a.profile.timezone} /><button className="btn primary full"><Plus size={16} />Save weigh-in</button></form><p className="fineprint">Weigh under similar conditions. A new weight does not silently change your approved calorie target.</p></section></div>
     <section className="card"><SectionHead title="A week of food awareness" text="Logged calories, not assumed consumption." /><div className="bar-chart">{days.map(d => <div key={d.date}><strong>{Math.round(d.kcal)}</strong><div className="bar-area"><motion.i initial={reduce?false:{height:0}} animate={{height:`${d.kcal/max*100}%`}} transition={{duration:reduce?0:.5}} /></div><span>{dateLabel(d.date,{ weekday:'short' })}</span></div>)}</div></section>
     {weights.length > 0 && <details className="details"><summary>Weigh-in history</summary>{weights.slice().reverse().map(w => <div className="restore-row" key={w.date}><span>{w.date}</span><strong>{w.kg} kg</strong></div>)}</details>}
     <p className="fineprint">Goal-date projections are omitted because weight change is uncertain. Use several weeks of data and review your plan with a professional when needed.</p>

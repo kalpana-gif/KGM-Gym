@@ -43,6 +43,8 @@ KGM-FIT uses the supplied green and charcoal palette with tactile controls and l
 
 The same app adapts to phones, tablets and desktop browsers. Phone layouts stack panels, provide 44px or larger action targets, and use 16px form inputs. Full-screen phone dialogs have a fixed header and independent scrolling; week selectors scroll horizontally. Tablet navigation is available along the bottom, and larger desktop windows use a sidebar. Safe-area spacing accommodates device insets. Tests cover all pages and editors at 320, 360, 390, 768, 1024 and 1440 pixels, plus short landscape viewports.
 
+The diary date selector fills the available width and keeps previous/next-day controls visible. Diary, meal and weigh-in dates share a custom Monday-first calendar with month/year selectors, selected-day and today indicators, and a quick return to today. The calendar opens as a bottom sheet on phones and a centered dialog on desktop. Arrow keys navigate days, Page Up/Down navigate months, Shift+Page Up/Down navigate years, and Escape closes without changing the date. Typed dates use `YYYY-MM-DD`; impossible dates do not change the diary.
+
 The rename keeps the original local storage identifiers so an existing diary remains available. New exports use the `kgm-fit` filename prefix. System fonts, icons and animation code work offline after the first production load.
 
 ## Connect Supabase

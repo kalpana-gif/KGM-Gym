@@ -339,29 +339,280 @@ main {
   scroll-margin-top:88px;
 }
 .date-control {
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:6px;
-  margin-bottom:12px;
-  flex-wrap:wrap;
-}
-.date-control input {
-  width:150px;
-  border:none;
-  background:none;
-  padding:8px;
-  color:var(--muted);
-  font-size:14px;
-  margin:0;
-  box-shadow:none;
-  min-height:44px;
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) 44px;
+  align-items:stretch;
+  width:100%;
+  gap:8px;
+  margin-bottom:24px;
 }
 .date-control .icon-btn {
   width:44px;
   min-width:44px;
-  height:44px;
+  height:100%;
   min-height:44px;
+  border-radius:14px;
+}
+.date-picker {
+  min-width:0;
+}
+.date-picker-field {
+  display:flex;
+  align-items:center;
+  min-width:0;
+  gap:8px;
+  padding:8px 12px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:linear-gradient(145deg,var(--surface-soft),var(--well));
+  box-shadow:inset 0 1px 0 #ffffff06;
+}
+.date-picker-field:focus-within {
+  border-color:var(--accent);
+}
+.date-picker-copy {
+  flex:1;
+  min-width:0;
+}
+.date-picker-copy label {
+  display:block;
+  margin:0;
+  font-size:11px;
+  font-weight:650;
+  color:var(--muted);
+  line-height:1.4;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.date-picker-copy input {
+  width:100%;
+  min-width:0;
+  min-height:44px;
+  margin:0;
+  padding:2px 0;
+  border:0;
+  border-radius:4px;
+  box-shadow:none;
+  background:transparent;
+  font-size:16px;
+  font-weight:650;
+  letter-spacing:.3px;
+  color:var(--text);
+  cursor:pointer;
+}
+.date-picker-copy input:focus-visible {
+  outline-offset:0;
+}
+.date-calendar-trigger {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:none;
+  gap:6px;
+  min-width:44px;
+  min-height:44px;
+  padding:8px;
+  border-radius:10px;
+  background:#9bff000b;
+  color:var(--accent);
+}
+.date-calendar-trigger:hover {
+  background:#9bff001a;
+}
+.date-picker-form {
+  margin:0 0 16px;
+}
+.form-grid .date-picker-form {
+  margin:0;
+}
+.date-picker-form .date-picker-field {
+  min-height:68px;
+}
+.calendar-dialog {
+  position:fixed;
+  inset:0;
+  width:calc(100% - 32px);
+  max-width:420px;
+  max-height:calc(100dvh - 32px);
+  margin:auto;
+  padding:20px 16px 16px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border:1px solid var(--control-border);
+  border-radius:24px;
+  color:var(--text);
+  background:linear-gradient(145deg,#282f2c,var(--charcoal));
+  box-shadow:0 24px 80px #010c12b3,inset 0 1px 0 #ffffff12;
+}
+.calendar-dialog::backdrop {
+  background:#010c12a6;
+  backdrop-filter:blur(5px);
+}
+.calendar-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:0 4px 18px;
+}
+.calendar-header .eyebrow {
+  color:var(--accent);
+  font-size:10px;
+  margin:0 0 4px;
+}
+.calendar-header h2 {
+  font-size:24px;
+  letter-spacing:-.6px;
+}
+.calendar-navigation {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:16px;
+}
+.calendar-navigation .icon-btn,.calendar-header .icon-btn {
+  width:44px;
+  height:44px;
+  min-width:44px;
+}
+.calendar-month-select {
+  display:flex;
+  flex:1;
+  min-width:0;
+  gap:4px;
+}
+.calendar-month-select select {
+  width:auto;
+  min-width:0;
+  min-height:44px;
+  margin:0;
+  padding:8px 4px;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+  font-size:16px;
+  font-weight:650;
+}
+.calendar-month-select select:first-child {
+  flex:1;
+}
+.calendar-month-select select:last-child {
+  flex:0 1 80px;
+}
+.calendar-weekdays,.calendar-week {
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:4px;
+}
+.calendar-weekdays {
+  margin-bottom:8px;
+  text-align:center;
+  color:var(--muted);
+  font-size:11px;
+}
+.calendar-week {
+  margin-bottom:4px;
+}
+.calendar-day {
+  position:relative;
+  width:100%;
+  min-width:44px;
+  height:44px;
+  padding:0;
+  border:1px solid transparent;
+  border-radius:12px;
+  background:transparent;
+  color:var(--text);
+  font-size:15px;
+  font-weight:550;
+}
+.calendar-day:hover {
+  background:var(--surface-raised);
+}
+.calendar-day.other-month {
+  color:var(--muted);
+  opacity:.55;
+}
+.calendar-day.is-today {
+  border-color:#9bff0059;
+}
+.calendar-day.selected {
+  background:var(--accent);
+  color:var(--night);
+  font-weight:750;
+  box-shadow:0 3px 12px #9bff001f;
+  opacity:1;
+}
+.calendar-today-dot {
+  display:none;
+}
+.is-today .calendar-today-dot {
+  display:block;
+  position:absolute;
+  bottom:4px;
+  left:calc(50% - 2px);
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  background:var(--accent);
+}
+.selected .calendar-today-dot {
+  background:var(--night);
+}
+.calendar-footer {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-top:16px;
+  padding:16px 4px 0;
+  border-top:1px solid var(--border);
+}
+.calendar-footer .btn {
+  min-height:44px;
+  padding:12px 16px;
+  font-size:13px;
+}
+.calendar-footer p {
+  margin:4px 0 0;
+  color:var(--text);
+  font-size:12px;
+  font-weight:600;
+}
+.calendar-legend {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:11px;
+  color:var(--muted);
+}
+.calendar-legend i {
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--accent);
+}
+@media (max-width:600px) {
+  .calendar-dialog {
+    inset:auto 0 0;
+    width:100%;
+    max-width:none;
+    max-height:90dvh;
+    margin:0;
+    padding:20px 12px calc(20px + env(safe-area-inset-bottom));
+    border-radius:24px 24px 0 0;
+    border-inline:0;
+    border-bottom:0;
+  }
+}
+@media (max-width:360px) {
+  .calendar-dialog { padding-inline:6px; }
+  .calendar-weekdays,.calendar-week { gap:0; }
+  .calendar-navigation,.calendar-header,.calendar-footer { padding-inline:6px; }
+  .calendar-month-select select { font-size:14px; }
+  .date-picker-field { padding-inline:8px; gap:4px; }
+  .date-calendar-trigger { padding:8px 4px; gap:2px; }
 }
 .page-heading {
   display:flex;
@@ -2805,9 +3056,7 @@ summary {
   .top-actions { gap:10px; }
   .connection-label { max-width:75px; font-size:11px; }
   .mobile-brand { font-size:21px; }
-  .date-control { justify-content:flex-start; margin-bottom:22px; gap:8px; }
-  .date-control input { flex:1; width:auto; max-width:180px; text-align:center; background:var(--well); border:1px solid var(--border); border-radius:12px; padding:10px; font-size:14px; }
-  .date-control .text-btn { margin-left:auto; }
+  .date-control { margin-bottom:22px; }
   .eyebrow { font-size:11px; line-height:1.6; letter-spacing:1.3px; }
   .page-heading { margin:8px 0 24px; }
   .page-heading>div>p:last-child { font-size:14px; margin-top:12px; }
