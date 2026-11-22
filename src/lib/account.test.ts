@@ -1,9 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { authLinkError, inboxLink, readSignInRequest, signInError, storeSignInRequest } from './account';
+import { authLinkError, inboxLink, readSignInRequest, signInError, storedAccountOwner, storeSignInRequest } from './account';
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('email sign-in recovery', () => {
+  it('retains the cached account diary when its access token expires without treating storage as backend verification', () => {
+    const id = 'bb47df1f-e28c-437f-9b44-537b8d37e4a0';
+    let value = JSON.stringify({ user: { id }, access_token: 'expired-test-token', refresh_token: 'test-refresh', expires_at: 1 });
+    vi.stubGlobal('localStorage', { getItem: () => value });
+    expect(storedAccountOwner('session')).toBe(`user:${id}`);
+    value = JSON.stringify({ user: { id }, access_token: 'token' });
+    expect(storedAccountOwner('session')).toBeNull();
+    value = '{broken';
+    expect(storedAccountOwner('session')).toBeNull();
+  });
+
   it('keeps a pending request available after reopening and discards expired or malformed state', () => {
     const storage = new Map<string,string>();
     vi.stubGlobal('localStorage', {

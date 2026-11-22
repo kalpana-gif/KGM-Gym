@@ -5,12 +5,12 @@ import { initialProfile, type Entity, type Payload } from '../types';
 import { clearOwner, pending, records, remove, save } from './db';
 
 const mocks = vi.hoisted(() => ({
-  getSession: vi.fn(), getUser: vi.fn(), rpc: vi.fn(), range: vi.fn(),
+  getSession: vi.fn(), getUser: vi.fn(), refreshSession: vi.fn(), rpc: vi.fn(), range: vi.fn(),
   createClient: vi.fn(),
 }));
 vi.mock('@supabase/supabase-js', () => ({
   createClient: mocks.createClient.mockImplementation(() => ({
-    auth: { getSession: mocks.getSession, getUser: mocks.getUser },
+    auth: { getSession: mocks.getSession, getUser: mocks.getUser, refreshSession: mocks.refreshSession },
     rpc: mocks.rpc,
     from: () => ({ select: () => ({ eq: () => ({ order: () => ({ range: mocks.range }) }) }) }),
   })),
@@ -27,6 +27,7 @@ beforeEach(async () => {
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) });
   mocks.getSession.mockResolvedValue({ data: { session: { user: { id: owner.slice(5) }, access_token: 'test-session' } }, error: null });
   mocks.getUser.mockResolvedValue({ data: { user: { id: owner.slice(5) } }, error: null });
+  mocks.refreshSession.mockResolvedValue({ data: { session: { user: { id: owner.slice(5) }, access_token: 'refreshed-test-session' } }, error: null });
   mocks.rpc.mockResolvedValue({ data: { status: 'applied' }, error: null });
   mocks.range.mockResolvedValue({ data: [], error: null });
   cloud = await import('./cloud');
@@ -37,6 +38,51 @@ afterEach(async () => {
 });
 
 describe('verified cloud synchronization', () => {
+  it('renews a rejected access token automatically before verifying and uploading', async () => {
+    await save(owner, 'profiles', initialProfile);
+    mocks.getUser.mockResolvedValueOnce({ data: { user: null }, error: { status: 401, message: 'JWT expired' } });
+    await cloud.sync(owner);
+    expect(mocks.refreshSession).toHaveBeenCalledOnce();
+    expect(mocks.getUser).toHaveBeenLastCalledWith('refreshed-test-session');
+    expect(await pending(owner)).toHaveLength(0);
+  });
+  it('renews a token rejected during a backend save and retries the same queued operation', async () => {
+    await save(owner, 'profiles', initialProfile);
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST303', message: 'JWT expired' } });
+    mocks.refreshSession.mockImplementationOnce(async () => {
+      mocks.getSession.mockResolvedValue({ data: { session: { user: { id: owner.slice(5) }, access_token: 'refreshed-test-session' } }, error: null });
+      return { data: { session: { user: { id: owner.slice(5) }, access_token: 'refreshed-test-session' } }, error: null };
+    });
+    await cloud.sync(owner);
+    expect(mocks.refreshSession).toHaveBeenCalledOnce();
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+    expect(mocks.rpc.mock.calls[0][1].p_operation).toBe(mocks.rpc.mock.calls[1][1].p_operation);
+    expect(await pending(owner)).toHaveLength(0);
+  });
+  it('keeps edits queued when session renewal is temporarily unavailable and never retries indefinitely', async () => {
+    await save(owner, 'profiles', initialProfile);
+    mocks.getUser.mockResolvedValueOnce({ data: { user: null }, error: { status: 401 } });
+    mocks.refreshSession.mockResolvedValueOnce({ data: { session: null }, error: { status: 503 } });
+    await expect(cloud.sync(owner)).rejects.toMatchObject({ kind: 'temporary' });
+    expect(await pending(owner)).toHaveLength(1);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { status: 401 } });
+    await expect(cloud.sync(owner)).rejects.toMatchObject({ kind: 'auth' });
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(2);
+    expect(await pending(owner)).toHaveLength(1);
+  });
+  it('does not upload if the account changes while a token is renewing', async () => {
+    await save(owner, 'profiles', initialProfile);
+    let current = true;
+    mocks.getUser.mockResolvedValueOnce({ data: { user: null }, error: { status: 401 } });
+    mocks.refreshSession.mockImplementationOnce(async () => {
+      current = false;
+      return { data: { session: { user: { id: owner.slice(5) }, access_token: 'refreshed-test-session' } }, error: null };
+    });
+    await expect(cloud.sync(owner, undefined, () => current)).rejects.toMatchObject({ kind: 'auth' });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(await pending(owner)).toHaveLength(1);
+  });
   it('imports every diary entity, syncs deletions and keeps photo drafts private', async () => {
     const food = foodById('rice-white');
     const items = [{ id: crypto.randomUUID(), food, grams: 150 }];

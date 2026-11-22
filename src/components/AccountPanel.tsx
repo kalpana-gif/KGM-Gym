@@ -108,7 +108,7 @@ export default function AccountPanel({ close, rotateGuest, authError = '' }: { c
           <p className={`account-sync-message ${a.syncState.status === 'synced' ? 'done' : syncFailed ? 'error' : ''}`} role={syncFailed ? 'alert' : 'status'}>{a.syncState.status === 'synced' && <CheckCircle2 size={17}/>} {a.syncState.message}</p>
           {a.syncState.lastSyncedAt && <p className="fineprint">Last successful sync: {new Date(a.syncState.lastSyncedAt).toLocaleString('en-GB', { timeZone: a.profile.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
           <button className="btn secondary full" disabled={cloudBusy} onClick={() => void a.syncNow()}><RefreshCw size={17} className={cloudBusy ? 'account-spinner' : undefined}/>{cloudBusy ? 'Syncing…' : 'Sync now'}</button>
-          <p className="fineprint">Offline edits wait safely on this device and upload after reconnecting. Automatic sync also checks for changes from your other devices every minute and when you return to the app.</p>
+          <p className="fineprint">You stay signed in when you close or reopen the app. Your session renews automatically. Offline edits wait safely on this device and upload after reconnecting. The app checks for changes from your other devices every minute and when you return.</p>
         </section>
         <button className="text-btn account-signout" disabled={cloudBusy} onClick={() => void a.run(async () => {
           const { error: signOutError } = await supabase!.auth.signOut({ scope:'local' });

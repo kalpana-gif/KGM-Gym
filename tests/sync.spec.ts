@@ -6,20 +6,48 @@ const account = {
   app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-11-22T00:00:00Z',
 };
 type ServerRow = { id: string; user_id: string; payload: Record<string, unknown>; version: number; deleted: boolean; updated_at: string };
+function sessionFor(user = account) {
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const token = [
+    Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url'),
+    Buffer.from(JSON.stringify({ sub: user.id, aud: 'authenticated', role: 'authenticated', exp })).toString('base64url'),
+    'test-signature',
+  ].join('.');
+  return { access_token: token, refresh_token: 'test-refresh-token', token_type: 'bearer', expires_in: 3600, expires_at: exp, user };
+}
 function backend() {
   const tables = new Map<string, Map<string, ServerRow>>();
   const operations = new Set<string>();
   let failWrites = false;
   let applied = 0;
   let reads = 0;
+  let refreshes = 0;
+  let failRefresh = false;
+  let rejectToken = false;
   return {
     tables, operations,
     get applied() { return applied; },
     get reads() { return reads; },
+    get refreshes() { return refreshes; },
     set failWrites(value: boolean) { failWrites = value; },
+    set failRefresh(value: boolean) { failRefresh = value; },
+    set rejectToken(value: boolean) { rejectToken = value; },
     async attach(page: Page, user = account) {
       await page.route('**/auth/v1/**', async route => {
         const path = new URL(route.request().url()).pathname;
+        if (path.endsWith('/token')) {
+          refreshes++;
+          await route.fulfill({
+            status: failRefresh ? 503 : 200, contentType: 'application/json',
+            body: JSON.stringify(failRefresh ? { message: 'Temporary authentication interruption' } : sessionFor(user)),
+          });
+          return;
+        }
+        if (path.endsWith('/user') && rejectToken) {
+          rejectToken = false;
+          await route.fulfill({ status: 401, contentType: 'application/json', body: '{"message":"JWT expired"}' });
+          return;
+        }
         await route.fulfill({
           status: path.endsWith('/logout') ? 204 : 200, contentType: 'application/json',
           body: path.endsWith('/logout') ? '' : JSON.stringify(path.endsWith('/user') ? user : {}),
@@ -68,12 +96,7 @@ async function connect(page: Page, user = account) {
   await page.getByLabel('Email address').fill(user.email);
   await page.getByRole('button', { name: 'Continue with email', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
-  const exp = Math.floor(Date.now() / 1000) + 3600;
-  const token = [
-    Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url'),
-    Buffer.from(JSON.stringify({ sub: user.id, aud: 'authenticated', role: 'authenticated', exp })).toString('base64url'),
-    'test-signature',
-  ].join('.');
+  const token = sessionFor(user).access_token;
   // Start the fragment-only callback on the same path, then load its document
   // exactly once. Reloading a completed callback would close the welcome panel.
   await page.goto('/');
@@ -99,6 +122,53 @@ async function history(page: Page) {
   await page.goto('/history');
   await page.getByLabel('Diary date', { exact: true }).fill('2026-11-22');
 }
+
+test('reopening an expired session retains the account diary and reconnects automatically after an auth interruption', async ({ page, context }) => {
+  test.setTimeout(60000);
+  const server = backend();
+  await server.attach(page);
+  await logMeal(page, 'Persistent account lunch', '150');
+  await connect(page);
+  await expect(page.locator('.account-sync-message')).toContainText('All saved changes are synced to Supabase');
+  await page.evaluate(() => {
+    const key = Object.keys(localStorage).find(key => /^sb-.*-auth-token$/.test(key))!;
+    const session = JSON.parse(localStorage.getItem(key)!);
+    session.expires_at = 1;
+    localStorage.setItem(key, JSON.stringify(session));
+  });
+  await page.close();
+  server.failRefresh = true;
+  const reopened = await context.newPage();
+  await server.attach(reopened);
+  await history(reopened);
+  await expect(reopened.getByRole('button', { name: 'Open Persistent account lunch', exact: true })).toBeVisible();
+  await reopened.getByRole('button', { name: 'Account and data', exact: true }).click();
+  await expect(reopened.getByRole('dialog', { name: 'Your account & data' })).toBeVisible();
+  await expect(reopened.getByRole('button', { name: 'Continue with email', exact: true })).toHaveCount(0);
+  await expect.poll(() => server.refreshes).toBeGreaterThan(0);
+  server.failRefresh = false;
+  await reopened.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(reopened.locator('.account-sync-message')).toContainText('All saved changes are synced to Supabase');
+  expect(server.applied).toBe(1);
+  await reopened.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await logMeal(reopened, 'Reconnected account dinner');
+  await expect.poll(() => server.applied).toBe(2);
+  await synced(reopened);
+});
+
+test('a rejected access token renews automatically and queued saves reach the backend', async ({ page }) => {
+  const server = backend();
+  await server.attach(page);
+  await page.goto('/');
+  await connect(page);
+  await expect(page.locator('.account-sync-message')).toContainText('All saved changes are synced to Supabase');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  server.rejectToken = true;
+  await logMeal(page, 'Renewed session lunch');
+  await expect.poll(() => server.applied).toBe(1);
+  await synced(page);
+  expect(server.refreshes).toBeGreaterThan(0);
+});
 
 test('verified account automatically uploads existing and new meals and receives another device’s edits', async ({ page, browser }) => {
   test.setTimeout(45000);

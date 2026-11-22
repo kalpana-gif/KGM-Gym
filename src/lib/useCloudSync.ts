@@ -11,6 +11,7 @@ export function useCloudSync(owner: string, guestOwner: string, authRevision: nu
     let timer: number | undefined;
     let running: Promise<void> | undefined;
     let changedDuringSync = false;
+    let resumeDuringSync = false;
     let succeeded = false;
     let failures = 0;
     let lastSyncedAt: string | undefined;
@@ -56,7 +57,7 @@ export function useCloudSync(owner: string, guestOwner: string, authRevision: nu
       }
     };
     const request = () => {
-      if (running) return running;
+      if (running) { resumeDuringSync = true; return running; }
       window.clearTimeout(timer);
       changedDuringSync = false; succeeded = false;
       running = perform().catch(() => {
@@ -64,7 +65,10 @@ export function useCloudSync(owner: string, guestOwner: string, authRevision: nu
         schedule(60000);
       }).finally(() => {
         running = undefined;
-        if (active && succeeded && changedDuringSync) void pending(owner).then(ops => {
+        if (active && resumeDuringSync) {
+          resumeDuringSync = false;
+          schedule(0);
+        } else if (active && succeeded && changedDuringSync) void pending(owner).then(ops => {
           if (active && ops.length) schedule(250);
         }).catch(() => {});
       });

@@ -4,7 +4,7 @@ import { Flame, LayoutDashboard, Utensils, CalendarDays, Dumbbell, ChartNoAxesCo
 import { Context } from './context';
 import { catalog } from './data/catalog';
 import { conflicts, records } from './lib/db';
-import { supabase } from './lib/cloud';
+import { savedAccountOwner, supabase } from './lib/cloud';
 import { useCloudSync } from './lib/useCloudSync';
 import { authLinkError, readSignInRequest, storeSignInRequest } from './lib/account';
 import { addDays, localDate } from './lib/calories';
@@ -28,7 +28,7 @@ function getGuest() { const key='lankafit-guest'; let id=localStorage.getItem(ke
 export default function App() {
   const reduce = useReducedMotion();
   const [guestOwner,setGuestOwner]=useState(getGuest);
-  const [owner,setOwner]=useState(guestOwner);
+  const [owner,setOwner]=useState(() => savedAccountOwner() ?? guestOwner);
   const rotateGuest=useCallback(()=>{
     const id=`guest:${crypto.randomUUID()}`;
     localStorage.setItem('lankafit-guest',id);setGuestOwner(id);setOwner(id);
@@ -43,7 +43,7 @@ export default function App() {
   const [composer,setComposer]=useState<{ slot?:Meal['slot']; meal?:LocalRecord<Meal>; food?:Food }|null>(null);
   const [notification,setNotification]=useState('');
   const [online,setOnline]=useState(navigator.onLine);
-  const [authReady,setAuthReady]=useState(!supabase);
+  const [authReady,setAuthReady]=useState(() => !supabase || Boolean(savedAccountOwner()));
   const [authRevision,setAuthRevision]=useState(0);
   const { syncState, syncNow } = useCloudSync(owner, guestOwner, authRevision);
   const [conflictRows,setConflictRows]=useState<Conflict[]>([]);
@@ -85,27 +85,73 @@ export default function App() {
   useEffect(()=>{
     if(!supabase)return;
     let active = true;
-    let authEventReceived = false;
+    let revision = 0;
+    let restoring = false;
+    let restoreAgain = false;
+    let retryTimer: number | undefined;
+    let failures = 0;
+    const scheduleRestore = (delay: number) => {
+      window.clearTimeout(retryTimer);
+      if(active) retryTimer = window.setTimeout(() => { void restore(); }, delay);
+    };
+    const restore = async () => {
+      if(!active)return;
+      if(restoring) { restoreAgain = true;return; }
+      restoring = true;
+      const requestedRevision = revision;
+      try {
+        const { data, error } = await supabase!.auth.getSession();
+        if(!active || requestedRevision !== revision)return;
+        if(error)throw error;
+        if(data.session) {
+          setOwner(`user:${data.session.user.id}`);setAuthError('');
+          setAuthRevision(value=>value+1);
+        } else if(savedAccountOwner()) {
+          // An expired session can remain in storage while a temporary
+          // refresh failure makes getSession/INITIAL_SESSION return null.
+          throw new Error('Session restoration pending');
+        } else setOwner(getGuest());
+        failures = 0;
+      } catch {
+        if(active && requestedRevision === revision) {
+          failures++;
+          scheduleRestore(Math.min(5000 * 2 ** (failures - 1),60000));
+        }
+      } finally {
+        restoring = false;
+        if(active) {
+          setAuthReady(true);
+          if(restoreAgain) { restoreAgain=false;scheduleRestore(0); }
+        }
+      }
+    };
     const { data:{ subscription } }=supabase.auth.onAuthStateChange((event,session)=>{
       if(!active)return;
-      authEventReceived = true;
+      revision++;
+      window.clearTimeout(retryTimer);
       // Switch to a fresh guest diary inside the event, before signOut()
       // resolves or a navigation can reopen the previously imported diary.
       if(event === 'SIGNED_OUT') rotateGuest();
-      else setOwner(session?`user:${session.user.id}`:getGuest());
+      else if(session) { setOwner(`user:${session.user.id}`);setAuthError('');failures=0; }
+      else {
+        const saved = savedAccountOwner();
+        setOwner(saved ?? getGuest());
+        if(saved)scheduleRestore(0);
+      }
       setAuthReady(true);
       if(event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') setAuthRevision(value=>value+1);
       if(event === 'SIGNED_OUT' || (session && ownerRef.current !== `user:${session.user.id}`)) setComposer(null);
     });
-    void supabase.auth.getSession().then(({ data, error })=>{
-      if(!active || authEventReceived)return;
-      if(data.session)setOwner(`user:${data.session.user.id}`);
-      if(error)setAuthError('Your previous sign-in could not be restored. Open a new email sign-in link to reconnect.');
-      setAuthReady(true);
-    }).catch(()=>{
-      if(active && !authEventReceived){setAuthReady(true);setAuthError('Your sign-in could not be restored. Open a new email sign-in link to reconnect.');}
-    });
-    return()=>{active=false;subscription.unsubscribe();};
+    const resume = () => { if(navigator.onLine) scheduleRestore(0); };
+    const visible = () => { if(document.visibilityState === 'visible')resume(); };
+    scheduleRestore(0);
+    window.addEventListener('online',resume);window.addEventListener('focus',resume);
+    document.addEventListener('visibilitychange',visible);
+    return()=>{
+      active=false;window.clearTimeout(retryTimer);subscription.unsubscribe();
+      window.removeEventListener('online',resume);window.removeEventListener('focus',resume);
+      document.removeEventListener('visibilitychange',visible);
+    };
   },[rotateGuest]);
   useEffect(()=>{
     const update=()=>setOnline(navigator.onLine);

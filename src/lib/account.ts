@@ -1,6 +1,19 @@
 export type SignInRequest = { email: string; sentAt: number; retryAt: number };
 const requestKey = 'kgm-fit-sign-in-request';
 
+// The cached owner selects this device's diary only. Backend access still
+// requires Supabase to refresh and verify the session before synchronization.
+export function storedAccountOwner(storageKey: string): string | null {
+  try {
+    const session = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
+    const id = session?.user?.id;
+    return typeof id === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id) &&
+      typeof session.access_token === 'string' && session.access_token &&
+      typeof session.refresh_token === 'string' && session.refresh_token
+      ? `user:${id}` : null;
+  } catch { return null; }
+}
+
 export function readSignInRequest(): SignInRequest | null {
   try {
     const request = JSON.parse(localStorage.getItem(requestKey) ?? 'null');
