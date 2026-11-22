@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Flame, Plus, Camera, LayoutDashboard, Utensils, CalendarDays, Dumbbell, ChartNoAxesCombined, History as HistoryIcon, Settings2, Cloud, CloudCheck, CloudUpload, CircleAlert, LoaderCircle, WifiOff, X } from 'lucide-react';
+import { Flame, Plus, LayoutDashboard, Utensils, CalendarDays, Dumbbell, ChartNoAxesCombined, History as HistoryIcon, Settings2, Cloud, CloudCheck, CloudUpload, CircleAlert, LoaderCircle, WifiOff, X } from 'lucide-react';
 import { Context } from './context';
 import { catalog } from './data/catalog';
 import { conflicts, records } from './lib/db';
@@ -202,7 +202,7 @@ export default function App() {
       <nav className="bottom-nav" aria-label="Mobile navigation">{pages.map(p=><motion.button key={p.key} aria-current={page===p.key?'page':undefined} className={page===p.key?'active':''} whileTap={reduce?undefined:{scale:.94}} onClick={()=>navigate(p.key)}>{page===p.key&&<motion.span aria-hidden="true" className="nav-highlight" layoutId="mobile-nav" transition={{type:'spring',stiffness:420,damping:36,duration:reduce?0:undefined}}/>}<p.icon size={20}/><span>{p.key==='plan'?'Plan':p.label}</span></motion.button>)}</nav>
     </div>
     {!composer&&!modal&&!loading&&authReady&&!loadError&&<motion.button ref={mealFab} type="button" className="meal-fab" aria-label="Add meal from photo" title="Take a photo and estimate meal calories" whileTap={reduce?undefined:{scale:.95}} onClick={()=>setComposer({initialMode:'photo'})}>
-      <span className="meal-fab-symbol" aria-hidden="true"><Plus size={28}/><span className="meal-fab-camera"><Camera size={12}/></span></span><span className="meal-fab-label">Add meal</span>
+      <Plus size={30} strokeWidth={2} aria-hidden="true"/>
     </motion.button>}
     {pendingTasks>0&&!composer&&!modal&&<div className="app-activity"><BusyIndicator title="Updating your space…" detail="Finishing your changes." /></div>}
     {composer&&<FoodComposer {...composer} close={()=>{setComposer(null);if(composer.initialMode==='photo')requestAnimationFrame(()=>mealFab.current?.focus({preventScroll:true}));}}/>}
