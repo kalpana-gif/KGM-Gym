@@ -13,14 +13,19 @@ export type Food = {
   id: string; name: string; aliases: string[]; kcal: number; macros: Macros;
   state: 'cooked' | 'raw' | 'ready'; group: 'grain' | 'protein' | 'vegetable' | 'fruit' | 'extra';
   servings: { label: string; grams: number; approximate: boolean }[];
-  source: string; sourceUrl?: string; uncertainty: 'reference' | 'recipe estimate' | 'user supplied';
+  source: string; sourceUrl?: string; uncertainty: 'reference' | 'recipe estimate' | 'user supplied' | 'ai estimate';
   allergens: string[]; vegetarian: boolean; ingredients?: { foodId: string; grams: number }[];
   instructions?: string; yieldGrams?: number;
 };
-export type MealItem = { id: string; food: Food; grams: number };
+export type MealItem = { id: string; food: Food; grams: number; source?: 'photo' };
+export type PhotoEstimate = {
+  foods: { name: string; grams: number; kcalMin: number; kcalMax: number; proteinGrams: number; carbsGrams: number; fatGrams: number; assumptions: string }[];
+  uncertainty: string;
+};
 export type Meal = {
   name: string; slot: 'breakfast' | 'lunch' | 'dinner' | 'snacks';
   date: string; timestamp: string; timezone: string; items: MealItem[];
+  photoEstimate?: PhotoEstimate;
 };
 export type Target = { date: string; kcal: number; maintenance: number; deficit: number; proteinPercent: number; fatPercent: number };
 export type Weight = { date: string; kg: number };

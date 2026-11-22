@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Cloud, Download, LogOut, Trash2, RefreshCw, Mail, Check, ShieldCheck, Smartphone, ArrowUpRight, LoaderCircle, CloudUpload, CheckCircle2 } from 'lucide-react';
+import { Cloud, Download, LogOut, Trash2, RefreshCw, Mail, Check, ShieldCheck, Smartphone, ArrowUpRight, LoaderCircle, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context';
 import { Modal } from './ui';
-import { authenticatedRequest, cloudConfigured, supabase, sync } from '../lib/cloud';
-import { clearOwner, conflicts, dismissConflict, importOwner, pending, records, save } from '../lib/db';
+import { authenticatedRequest, cloudConfigured, supabase } from '../lib/cloud';
+import { clearOwner, dismissConflict, records, save } from '../lib/db';
 import { inboxLink, readSignInRequest, signInError, storeSignInRequest, type SignInRequest } from '../lib/account';
 import { total } from '../lib/calories';
 import type { Meal } from '../types';
 
-export default function AccountPanel({ close, guestOwner, rotateGuest, authError = '' }: { close: () => void; guestOwner: string; rotateGuest: () => void; authError?: string }) {
+export default function AccountPanel({ close, rotateGuest, authError = '' }: { close: () => void; guestOwner: string; rotateGuest: () => void; authError?: string }) {
   const a = useApp();
   const reduce = useReducedMotion();
   const [request,setRequest] = useState<SignInRequest | null>(() => authError ? null : readSignInRequest());
@@ -20,14 +20,11 @@ export default function AccountPanel({ close, guestOwner, rotateGuest, authError
   const [now,setNow] = useState(Date.now);
   const [confirmation,setConfirmation] = useState('');
   const [accountEmail,setAccountEmail] = useState('');
-  const [guestCount,setGuestCount] = useState(0);
-  const [queued,setQueued] = useState<number | null>(null);
-  const [cloudState,setCloudState] = useState<'idle'|'busy'|'done'|'error'>('idle');
-  const [cloudMessage,setCloudMessage] = useState('');
   const sendingRef = useRef(false);
-  const cloudBusyRef = useRef(false);
   const emailStepRef = useRef<HTMLHeadingElement>(null);
   const loggedIn = a.owner.startsWith('user:');
+  const cloudBusy = a.syncState.status === 'checking' || a.syncState.status === 'syncing';
+  const syncFailed = a.syncState.status === 'error' || a.syncState.status === 'conflict';
   const remaining = Math.max(0, Math.ceil((retryAt - now) / 1000));
   const mailbox = inboxLink(request?.email ?? email);
   useEffect(() => {
@@ -43,24 +40,11 @@ export default function AccountPanel({ close, guestOwner, rotateGuest, authError
   }, [request]);
   useEffect(() => {
     let active = true;
-    const refresh = async () => {
-      const [guestRows, accountRows, ops] = await Promise.all([
-        records(guestOwner), loggedIn ? records(a.owner, undefined, true) : Promise.resolve([]),
-        loggedIn ? pending(a.owner) : Promise.resolve([]),
-      ]);
-      if (!active) return;
-      const existing = new Set(accountRows.map(row => row.id));
-      setGuestCount(guestRows.filter(row => row.entity !== 'photo_metadata' && !existing.has(row.id)).length);
-      setQueued(ops.length);
-    };
-    void refresh().catch(() => { if (active) setError('Couldn’t read the local backup status. Try reopening this screen.'); });
-    const onChange = () => { void refresh().catch(() => { if (active) setError('Couldn’t read the local backup status. Try reopening this screen.'); }); };
-    window.addEventListener('lankafit-data', onChange);
     if (loggedIn) void supabase?.auth.getSession().then(({ data }) => {
       if (active) setAccountEmail(data.session?.user.email ?? '');
     });
-    return () => { active = false; window.removeEventListener('lankafit-data', onChange); };
-  }, [a.owner, guestOwner, loggedIn]);
+    return () => { active = false; };
+  }, [a.owner, loggedIn]);
   const sendLink = async () => {
     if (sendingRef.current || Date.now() < retryAt || !supabase) return;
     if (!navigator.onLine) {
@@ -84,30 +68,6 @@ export default function AccountPanel({ close, guestOwner, rotateGuest, authError
       setError(signInError(sendError));
     } finally { sendingRef.current = false; setSending(false); }
   };
-  const syncDiary = async (includeGuest = false) => {
-    if (cloudBusyRef.current) return;
-    cloudBusyRef.current = true; setCloudState('busy'); setCloudMessage('');
-    try {
-      if (!navigator.onLine) throw new Error('You’re offline. Your changes are saved here; reconnect to back them up.');
-      if (includeGuest) await importOwner(guestOwner, a.owner);
-      const result = await sync(a.owner);
-      const [ops, review, conflictRows] = await Promise.all([pending(a.owner), records(a.owner, undefined, true), conflicts(a.owner)]);
-      setQueued(ops.length);
-      const remainingGuest = (await records(guestOwner)).filter(row => row.entity !== 'photo_metadata' && !review.some(existing => existing.id === row.id)).length;
-      setGuestCount(remainingGuest);
-      if (ops.length || result !== 'All changes synced' || conflictRows.length) {
-        setCloudState('idle'); setCloudMessage(conflictRows.length
-          ? 'Review the conflicting edits below before completing your backup.'
-          : 'Backup is still in progress. Your diary is saved on this device; check again in a moment.');
-      } else {
-        setCloudState('done');
-        setCloudMessage(includeGuest ? 'Your device diary is now backed up to your account.' : 'Your diary is up to date across devices.');
-      }
-    } catch {
-      setCloudState('error');
-      setCloudMessage('Backup couldn’t finish. Your diary is saved on this device. Check your connection and try Sync now again.');
-    } finally { cloudBusyRef.current = false; }
-  };
   const download = (name: string, content: string, mime: string) => {
     const url = URL.createObjectURL(new Blob([content],{ type:mime }));
     const el = document.createElement('a'); el.href=url; el.download=name; el.click(); window.setTimeout(() => URL.revokeObjectURL(url),1000);
@@ -117,7 +77,7 @@ export default function AccountPanel({ close, guestOwner, rotateGuest, authError
       <div className="account-status"><span className="account-symbol">{loggedIn ? <ShieldCheck size={25}/> : <Smartphone size={25}/>}</span><div><strong>{loggedIn ? 'Your account is connected' : 'Your diary is safe on this device'}</strong><p>{loggedIn ? accountEmail || 'Private cloud backup is available.' : 'Sign in to keep it with you across devices.'}</p></div><span className="account-badge">{loggedIn ? 'Connected' : 'Guest'}</span></div>
       {!loggedIn && cloudConfigured && <>
         <ol className="account-steps" aria-label="Connect your account">
-          {['Your email', 'Open the link', 'Back up diary'].map((label,index) => <li key={label} className={index === (request ? 1 : 0) ? 'current' : index === 0 && request ? 'complete' : ''} aria-current={index === (request ? 1 : 0) ? 'step' : undefined}><span>{index === 0 && request ? <Check size={13}/> : index + 1}</span>{label}</li>)}
+          {['Your email', 'Verify email', 'Auto sync'].map((label,index) => <li key={label} className={index === (request ? 1 : 0) ? 'current' : index === 0 && request ? 'complete' : ''} aria-current={index === (request ? 1 : 0) ? 'step' : undefined}><span>{index === 0 && request ? <Check size={13}/> : index + 1}</span>{label}</li>)}
         </ol>
         <AnimatePresence mode="wait" initial={false}>
           <motion.section key={request ? 'email-sent' : 'email-form'} className="account-connect" initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduce ? 0 : .16 }} onAnimationComplete={() => { if (request) emailStepRef.current?.focus(); }}>
@@ -125,8 +85,8 @@ export default function AccountPanel({ close, guestOwner, rotateGuest, authError
               <span className="account-mail-art" aria-hidden="true"><Mail size={32}/><span><Check size={14}/></span></span>
               <h3 ref={emailStepRef} tabIndex={-1}>Check your email</h3>
               <p>We sent a sign-in link to <strong className="account-email">{request.email}</strong></p>
-              <div className="account-email-guide"><span>1</span><p>Open the newest email from <strong>Supabase Auth</strong>.</p><span>2</span><p>Tap <strong>Confirm email address</strong> or the sign-in link. KGM-FIT will open with your account connected.</p></div>
-              <p className="fineprint">Use this browser so your device diary is ready to back up. Check Spam or Junk if the email hasn’t arrived.</p>
+              <div className="account-email-guide"><span>1</span><p>Open the newest email from <strong>Supabase Auth</strong>.</p><span>2</span><p>Tap <strong>Confirm email address</strong> or the sign-in link. KGM-FIT will connect your account and sync your saved diary automatically.</p></div>
+              <p className="fineprint">Open the link in this browser to include this device’s saved diary. Check Spam or Junk if the email hasn’t arrived.</p>
               {mailbox && <a className="btn primary full" href={mailbox.url} target="_blank" rel="noopener noreferrer"><Mail size={17}/>{mailbox.label}<ArrowUpRight size={17}/></a>}
               <div className="account-resend"><button className="text-btn" disabled={sending || remaining > 0} onClick={() => void sendLink()}>{sending ? 'Sending…' : remaining ? `Resend in ${remaining}s` : 'Send a new link'}</button><button className="text-btn" disabled={sending} onClick={() => { setRequest(null); setError(''); storeSignInRequest(null); }}>Use a different email</button></div>
             </> : <>
@@ -140,18 +100,20 @@ export default function AccountPanel({ close, guestOwner, rotateGuest, authError
             {error && <p className="account-error" role="alert">{error}</p>}
           </motion.section>
         </AnimatePresence>
-        <div className="account-trust"><ShieldCheck size={15}/><span>Your diary is private. You choose when to back up existing entries.</span></div>
+        <div className="account-trust"><ShieldCheck size={15}/><span>After email verification, your saved meals, workouts and progress sync automatically to your private Supabase account.</span></div>
       </>}
       {!cloudConfigured && <div className="notice"><strong>Cloud backup isn’t available yet.</strong><p>You can keep using your diary on this device and download a backup below.</p></div>}
       {loggedIn && <>
-        {guestCount > 0 && <section className="account-import"><CloudUpload size={25}/><div><h3>Bring your device diary along</h3><p>{guestCount} saved {guestCount === 1 ? 'entry is' : 'entries are'} ready to add to your account. Existing account entries stay in place.</p></div><button className="btn primary full" disabled={cloudState === 'busy'} onClick={() => void syncDiary(true)}>{cloudState === 'busy' ? <LoaderCircle size={17} className="account-spinner"/> : <CloudUpload size={17}/>}Back up my device diary</button></section>}
-        <section className="account-sync"><div><Cloud size={22}/><div><h3>Cloud backup</h3><p>{queued === null ? 'Checking your diary…' : queued > 0 ? `${queued} ${queued === 1 ? 'change waiting' : 'changes waiting'} to back up` : 'New entries back up automatically when online.'}</p></div></div><button className="btn secondary full" disabled={cloudState === 'busy'} onClick={() => void syncDiary()}><RefreshCw size={17} className={cloudState === 'busy' ? 'account-spinner' : undefined}/>{cloudState === 'busy' ? 'Backing up…' : 'Sync now'}</button>
-          {cloudMessage && <p className={`account-sync-message ${cloudState}`} role={cloudState === 'error' ? 'alert' : 'status'}>{cloudState === 'done' && <CheckCircle2 size={17}/>} {cloudMessage}</p>}
+        <section className="account-sync"><div><Cloud size={22}/><div><h3>Automatic cloud sync</h3><p>Your diary is stored in Supabase and kept up to date across your signed-in devices.</p><p>{a.syncState.pending > 0 ? `${a.syncState.pending} ${a.syncState.pending === 1 ? 'change waiting' : 'changes waiting'} to sync` : cloudBusy ? 'Verifying and synchronizing your diary…' : 'New entries sync automatically when online.'}</p></div></div>
+          <p className={`account-sync-message ${a.syncState.status === 'synced' ? 'done' : syncFailed ? 'error' : ''}`} role={syncFailed ? 'alert' : 'status'}>{a.syncState.status === 'synced' && <CheckCircle2 size={17}/>} {a.syncState.message}</p>
+          {a.syncState.lastSyncedAt && <p className="fineprint">Last successful sync: {new Date(a.syncState.lastSyncedAt).toLocaleString('en-GB', { timeZone: a.profile.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
+          <button className="btn secondary full" disabled={cloudBusy} onClick={() => void a.syncNow()}><RefreshCw size={17} className={cloudBusy ? 'account-spinner' : undefined}/>{cloudBusy ? 'Syncing…' : 'Sync now'}</button>
+          <p className="fineprint">Offline edits wait safely on this device and upload after reconnecting. Automatic sync also checks for changes from your other devices every minute and when you return to the app.</p>
         </section>
-        <button className="text-btn account-signout" disabled={cloudState === 'busy'} onClick={() => void a.run(async () => {
+        <button className="text-btn account-signout" disabled={cloudBusy} onClick={() => void a.run(async () => {
           const { error: signOutError } = await supabase!.auth.signOut({ scope:'local' });
           if (signOutError) throw signOutError;
-          rotateGuest(); close();
+          close();
         },'Signed out. Unsynced entries will resume when you sign in to this account again.')}><LogOut size={16}/>Sign out</button>
         {error && <p className="account-error" role="alert">{error}</p>}
       </>}

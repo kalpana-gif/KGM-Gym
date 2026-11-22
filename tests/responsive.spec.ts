@@ -157,6 +157,14 @@ for (const width of [320, 360, 390, 768, 1024, 1440]) {
       await fits(page, 'Progress after weigh-in');
       await capture(page, `${width}-progress`);
 
+      await page.goto('/history');
+      await expect(page.getByRole('heading', { name: 'Weekly calories', exact: true })).toBeVisible();
+      await fits(page, 'Food history and daily calorie chart');
+      await page.getByRole('button', { name: 'Previous week', exact: true }).click();
+      await fits(page, 'Food history empty week');
+      await page.getByRole('button', { name: 'Back to today', exact: true }).click();
+      await capture(page, `${width}-history-responsive`);
+
       await page.getByRole('button', { name: 'Account and data', exact: true }).click();
       await fits(page, 'Account and export');
       await page.getByText('Delete this guest diary', { exact: true }).click();

@@ -77,8 +77,8 @@ test('deep links, calculated meal plan, workout logs, photo fallback and 360px l
   await page.screenshot({path:'artifacts/lankafit-workouts.png',fullPage:true});
   await page.goto('/food');await page.getByRole('button',{name:'Log a meal',exact:true}).click();
   await page.getByRole('button',{name:'Meal photo',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Sign in to use online AI →'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Estimate with AI'})).toBeDisabled();
+  await expect(page.getByText(/No sign-in needed/)).toBeVisible();
+  await expect(page.getByRole('button',{name:'Estimate calories'})).toBeDisabled();
   await expect(page.getByRole('dialog')).toHaveCSS('opacity','1');
   await page.screenshot({path:'artifacts/lankafit-photo.png'});
   await page.getByRole('button',{name:'Close dialog'}).click();

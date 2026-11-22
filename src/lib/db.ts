@@ -55,8 +55,9 @@ export async function mergeRemote(remote: LocalRecord) {
   const key = `${remote.owner}:${remote.id}`; const local = await tx.objectStore('records').get(key);
   const ops = (await tx.objectStore('operations').index('owner').getAll(remote.owner)).filter(o => o.recordId === remote.id);
   if (ops.length) { await tx.done; return; }
-  if (!local || remote.version >= local.version) await tx.objectStore('records').put({ ...remote, syncedVersion: remote.version }, key);
-  await tx.done; changed();
+  const updated = !local || remote.version > local.version || (remote.version === local.version && local.syncedVersion < remote.version);
+  if (updated) await tx.objectStore('records').put({ ...remote, syncedVersion: remote.version }, key);
+  await tx.done; if (updated) changed();
 }
 export async function resolveServerConflict(op: Operation, remote: LocalRecord) {
   const db = await dbPromise(); const tx = db.transaction(['records', 'operations', 'conflicts'], 'readwrite');
@@ -77,8 +78,21 @@ export async function clearOwner(owner: string) {
   await tx.done; changed();
 }
 export async function importOwner(from: string, to: string) {
-  const rows = await records(from);
-  // Import once using a durable source-to-destination map in IDs: preserve IDs, skip existing.
-  const existing = new Set((await records(to, undefined, true)).map(r => r.id));
-  for (const row of rows) if (!existing.has(row.id) && row.entity !== 'photo_metadata') await save(to, row.entity, row.data, row.id);
+  if (from === to || !from.startsWith('guest:') || !to.startsWith('user:')) return;
+  const db = await dbPromise();
+  const tx = db.transaction(['records', 'operations'], 'readwrite');
+  const rows = await tx.objectStore('records').index('owner').getAll(from);
+  const existing = new Set((await tx.objectStore('records').index('owner').getAll(to)).map(r => r.id));
+  let imported = false;
+  for (const row of rows) {
+    if (row.deleted || row.entity === 'photo_metadata' || existing.has(row.id)) continue;
+    const record: LocalRecord = { ...row, owner: to, version: 1, syncedVersion: 0, modifiedAt: new Date().toISOString() };
+    await tx.objectStore('records').put(record, `${to}:${row.id}`);
+    await tx.objectStore('operations').put({
+      id: crypto.randomUUID(), owner: to, recordId: row.id, entity: row.entity,
+      baseVersion: 0, record, createdAt: record.modifiedAt,
+    });
+    imported = true;
+  }
+  await tx.done; if (imported) changed();
 }

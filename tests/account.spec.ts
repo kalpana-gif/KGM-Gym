@@ -84,7 +84,7 @@ test('provider rate limits show an inline retry message without losing the diary
   await expect(page.getByRole('heading',{name:/Small steps/})).toBeVisible();
 });
 
-test('sign-in offers a device backup, recovers a failed upload and never imports the meal twice', async ({page}) => {
+test('verified sign-in automatically imports the diary, recovers a failed upload and never imports it twice', async ({page}) => {
   const user = {id:'bb47df1f-e28c-437f-9b44-537b8d37e4a0',aud:'authenticated',role:'authenticated',email:'test@example.com',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-11-22T00:00:00Z'};
   const server = new Map<string,Map<string,unknown>>();
   const operations = new Set<string>();
@@ -132,19 +132,18 @@ test('sign-in offers a device backup, recovers a failed upload and never imports
   await page.reload();
   await expect(page.getByRole('dialog',{name:'Your account & data'})).toBeVisible();
   await expect(page.getByText('Your account is connected',{exact:true})).toBeVisible();
-  await expect(page.getByText('1 saved entry is ready',{exact:false})).toBeVisible();
   await accountFits(page);
-  await page.getByRole('button',{name:'Back up my device diary',exact:true}).click();
-  await expect(page.getByRole('alert')).toContainText('Backup couldn’t finish');
+  await expect(page.getByRole('button',{name:'Back up my device diary',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('alert')).toContainText('Supabase could not complete synchronization');
   expect(applied).toBe(0);
   failUpload = false;
   await page.getByRole('button',{name:'Sync now',exact:true}).click();
-  await expect(page.getByRole('status')).toContainText('up to date across devices');
+  await expect(page.locator('.account-sync-message')).toContainText('All saved changes are synced to Supabase');
   expect(applied).toBe(1);
   expect(server.get('meal_logs')?.size).toBe(1);
   await expect(page.getByRole('button',{name:'Back up my device diary',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Sync now',exact:true}).click();
-  await expect(page.getByRole('status')).toContainText('up to date across devices');
+  await expect(page.locator('.account-sync-message')).toContainText('All saved changes are synced to Supabase');
   expect(applied).toBe(1);
   await page.screenshot({path:'artifacts/kgm-fit-account-connected.png'});
 });

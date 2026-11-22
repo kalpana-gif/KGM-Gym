@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build && node scripts/postbuild.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
+    "check:ai": "node scripts/check-ai.mjs",
+    "test:ai:live": "playwright test --config playwright.live.config.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
