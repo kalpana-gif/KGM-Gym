@@ -341,17 +341,117 @@ main {
 .date-control {
   display:grid;
   grid-template-columns:44px minmax(0,1fr) 44px;
-  align-items:stretch;
+  align-items:center;
   width:100%;
-  gap:8px;
+  gap:12px;
+  padding:8px 10px;
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:linear-gradient(110deg,#26302a,var(--surface-soft) 55%,var(--well));
+  box-shadow:inset 0 1px 0 #ffffff07,0 4px 16px #010c121c;
   margin-bottom:24px;
 }
 .date-control .icon-btn {
   width:44px;
   min-width:44px;
-  height:100%;
+  height:44px;
   min-height:44px;
-  border-radius:14px;
+  border-radius:12px;
+  background:#ffffff04;
+  box-shadow:none;
+  border-color:#ffffff0c;
+}
+.date-control .icon-btn:hover {
+  background:#9bff0010;
+  border-color:#9bff0030;
+}
+.date-control .date-picker-field {
+  gap:12px;
+  padding:4px;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+.date-picker-icon {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:none;
+  width:44px;
+  height:44px;
+  color:var(--accent);
+  border:1px solid #9bff0020;
+  border-radius:12px;
+  background:#9bff000c;
+}
+.date-control .date-picker-copy label {
+  font-size:10px;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+  color:#bac7bc;
+}
+.date-control .date-picker-copy input {
+  min-height:34px;
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:-.25px;
+  color:transparent;
+  caret-color:transparent;
+}
+.date-picker-value {
+  position:relative;
+}
+.date-picker-readable {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:-.25px;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.date-readable-short {
+  display:none;
+}
+.date-picker-value:focus-within .date-picker-readable {
+  visibility:hidden;
+}
+.date-control .date-picker-value:focus-within input {
+  color:var(--text);
+  caret-color:var(--text);
+}
+.date-control .date-calendar-trigger {
+  gap:9px;
+  padding:10px 14px;
+  border:1px solid #9bff0028;
+  font-size:13px;
+  font-weight:650;
+  white-space:nowrap;
+}
+.date-control .date-calendar-trigger .date-trigger-icon {
+  display:none;
+}
+@media (max-width:600px) {
+  .date-control {
+    gap:6px;
+    padding:7px;
+    border-radius:16px;
+  }
+  .date-control .date-picker-icon,
+  .date-control .date-calendar-trigger span {
+    display:none;
+  }
+  .date-control .date-picker-field { gap:6px; padding:2px; }
+  .date-control .date-picker-copy label { font-size:9px; letter-spacing:.5px; }
+  .date-control .date-picker-copy input { font-size:16px; }
+  .date-control .date-picker-readable { font-size:16px; }
+  .date-control .date-readable-long { display:none; }
+  .date-control .date-readable-short { display:inline; }
+  .date-control .date-calendar-trigger { gap:0; padding:10px; }
+  .date-control .date-calendar-trigger .date-trigger-icon { display:block; }
+  .date-control .date-calendar-trigger > svg:last-child { display:none; }
 }
 .date-picker {
   min-width:0;

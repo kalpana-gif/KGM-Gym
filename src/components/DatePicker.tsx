@@ -24,19 +24,26 @@ export default function DatePicker({ value, onChange, label = 'Diary date', time
   return <div className={`date-picker ${navigation ? 'date-control' : 'date-picker-form'}`}>
     {navigation && <button type="button" className="icon-btn date-step" aria-label="Previous diary day" onClick={() => onChange(addDays(value, -1))}><ChevronLeft size={19} /></button>}
     <div className="date-picker-field">
+      {navigation && <span className="date-picker-icon" aria-hidden="true"><CalendarDays size={23} /></span>}
       <div className="date-picker-copy">
         <label htmlFor={id}>{navigation ? `${value === today ? 'Today' : label} · ${dateLabel(value, { weekday: 'long' })}` : label}</label>
-        <input id={id} type="text" aria-label={label} aria-describedby={`${id}-hint`} value={draft}
-          autoComplete="off" spellCheck={false} placeholder="YYYY-MM-DD" maxLength={10}
-          onClick={() => setOpen(true)}
-          onChange={event => { const next = event.target.value; setDraft(next); if (validCalendarDate(next)) onChange(next); }}
-          onBlur={() => { if (!validCalendarDate(draft)) setDraft(value); }}
-          onKeyDown={event => {
-            if (event.key === 'ArrowDown' || event.key === 'Enter') { event.preventDefault(); setOpen(true); }
-          }} />
+        <div className="date-picker-value">
+          {navigation && <span className="date-picker-readable" aria-hidden="true">
+            <span className="date-readable-long">{dateLabel(value, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            <span className="date-readable-short">{dateLabel(value, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </span>}
+          <input id={id} type="text" aria-label={label} aria-describedby={`${id}-hint`} value={draft}
+            autoComplete="off" spellCheck={false} placeholder="YYYY-MM-DD" maxLength={10}
+            onClick={() => setOpen(true)}
+            onChange={event => { const next = event.target.value; setDraft(next); if (validCalendarDate(next)) onChange(next); }}
+            onBlur={() => { if (!validCalendarDate(draft)) setDraft(value); }}
+            onKeyDown={event => {
+              if (event.key === 'ArrowDown' || event.key === 'Enter') { event.preventDefault(); setOpen(true); }
+            }} />
+        </div>
       </div>
       <button ref={trigger} type="button" className="date-calendar-trigger" aria-label={`Open ${label.toLowerCase()} calendar`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
-        <CalendarDays size={20} /><ChevronDown size={14} />
+        <CalendarDays className="date-trigger-icon" size={20} />{navigation && <span>Change date</span>}<ChevronDown size={14} />
       </button>
       <span className="sr-only" id={`${id}-hint`}>Enter a date as YYYY-MM-DD, or open the calendar to choose a date.</span>
     </div>

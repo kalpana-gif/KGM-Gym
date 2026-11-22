@@ -33,11 +33,17 @@ for (const width of [320, 375, 390, 768, 1440]) {
     await dialog.getByRole('button', { name: 'Monday, 23 November 2026', exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(field).toHaveValue('2026-11-23');
+    await expect(page.locator(width <= 600 ? '.date-readable-short' : '.date-readable-long')).toBeVisible();
+    await expect(page.locator(width <= 600 ? '.date-readable-short' : '.date-readable-long')).toHaveText(width <= 600 ? '23 Nov 2026' : '23 November 2026');
+    expect(await page.locator(width <= 600 ? '.date-readable-short' : '.date-readable-long').evaluate(text =>
+      text.getBoundingClientRect().width - text.closest('.date-picker-value')!.getBoundingClientRect().width,
+    )).toBeLessThanOrEqual(1);
     await expect(page.getByRole('button', { name: 'Open diary date calendar', exact: true })).toBeFocused();
     await page.getByRole('button', { name: 'Previous diary day', exact: true }).click();
     await expect(field).toHaveValue('2026-11-22');
     await page.getByRole('button', { name: 'Next diary day', exact: true }).click();
     await expect(field).toHaveValue('2026-11-23');
+    await page.screenshot({ path: `artifacts/kgm-fit-date-bar-${width}.png` });
   });
 }
 
