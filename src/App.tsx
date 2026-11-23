@@ -22,6 +22,7 @@ import DatePicker from './components/DatePicker';
 import BusyIndicator from './components/BusyIndicator';
 import DotSpinner from './components/DotSpinner';
 import { PageTransition } from './components/motion';
+import MobileNavigation from './components/MobileNavigation';
 
 const pages = [{ key:'today',label:'Today',icon:LayoutDashboard },{ key:'food',label:'Food',icon:Utensils },{ key:'history',label:'History',icon:HistoryIcon },{ key:'plan',label:'Meal plan',icon:CalendarDays },{ key:'workouts',label:'Workouts',icon:Dumbbell },{ key:'progress',label:'Progress',icon:ChartNoAxesCombined }];
 const currentPage = () => pages.find(p=>`/${p.key}`===window.location.pathname)?.key ?? 'today';
@@ -222,7 +223,7 @@ export default function App() {
           <footer className="page-footer"><span><Flame size={14}/>KGM-FIT</span><p>Small steps. Lasting change.</p><button className="text-btn" onClick={()=>setModal('account')}>Privacy & your data</button></footer>
         </main>
       </div>
-      <nav className="bottom-nav" aria-label="Mobile navigation">{pages.map(p=><motion.button key={p.key} aria-current={page===p.key?'page':undefined} className={page===p.key?'active':''} whileTap={reduce?undefined:{scale:.94}} onClick={()=>navigate(p.key)}>{page===p.key&&<motion.span aria-hidden="true" className="nav-highlight" layoutId="mobile-nav" transition={{type:'spring',stiffness:420,damping:36,duration:reduce?0:undefined}}/>}<p.icon size={20}/><span>{p.key==='plan'?'Plan':p.label}</span></motion.button>)}</nav>
+      <MobileNavigation page={page}/>
     </div>
     {!composer&&!modal&&!loading&&authReady&&!loadError&&<motion.button ref={mealFab} type="button" className="meal-fab" aria-label="Add meal from photo" title="Take a photo and estimate meal calories" whileTap={reduce?undefined:{scale:.95}} onClick={()=>setComposer({initialMode:'photo'})}>
       <Plus size={30} strokeWidth={2} aria-hidden="true"/>
