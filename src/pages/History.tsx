@@ -2,6 +2,7 @@ import { useId, useMemo } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Utensils } from 'lucide-react';
 import { useApp } from '../context';
 import { Empty } from '../components/ui';
+import LogMealButton from '../components/LogMealButton';
 import { addDays, dateLabel, localDate, total } from '../lib/calories';
 import { mealWeek } from '../lib/history';
 import type { Meal } from '../types';
@@ -26,7 +27,7 @@ export default function History() {
   return <>
     <div className="page-heading">
       <div><p className="eyebrow">YOUR MEALS, OVER TIME</p><h1>Your food history<span>.</span></h1><p>See what you ate and how your calories add up, day by day.</p></div>
-      <button className="btn primary" onClick={() => a.openFood()}><Plus size={17} />Log a meal</button>
+      <LogMealButton onClick={() => a.openFood()} />
     </div>
     <div className="history-layout">
       <section className="card history-week" aria-labelledby={weeklyTitle}>

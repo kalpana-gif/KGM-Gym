@@ -7,6 +7,7 @@ import { FitnessArt, PlateArt, SectionHead } from '../components/ui';
 import { workoutFor } from '../data/workouts';
 import type { LocalRecord, Meal, Session } from '../types';
 import { AnimatedNumber, Reveal } from '../components/motion';
+import LogMealButton from '../components/LogMealButton';
 
 export default function Today() {
   const reduce = useReducedMotion();
@@ -59,7 +60,7 @@ export default function Today() {
           <div><strong>{budget ? <AnimatedNumber value={round(Math.abs(remaining))}/> : '—'}</strong><span>{budget ? remaining < 0 ? 'kcal above target' : 'kcal remaining' : 'set your target'}</span></div>
         </div><div className="calorie-stats"><div><span className="dot accent" /><div><p>Eaten</p><strong>{round(eaten.kcal).toLocaleString()} <small>kcal</small></strong></div></div><div><span className="dot pale" /><div><p>Daily target</p><strong>{budget ? budget.toLocaleString() : '—'} <small>kcal</small></strong></div></div><button className="text-btn" onClick={a.openProfile}>Review calculator <ArrowRight size={14} /></button></div></div>
         <div className="macro-grid">{(['protein', 'carbs', 'fat'] as const).map((key, i) => <div key={key}><div><span>{key[0].toUpperCase() + key.slice(1)}</span><strong>{round(eaten[key])}<small> / {macro ? round(macro[key]) : '—'} g</small></strong></div><div className="track"><motion.i className={`macro-${i}`} initial={false} animate={{width:`${macro ? Math.min(100, eaten[key] / macro[key] * 100) : 0}%`}} transition={{duration:reduce?0:.5}} /></div></div>)}</div>
-        <motion.button className="btn primary full" whileTap={reduce?undefined:{scale:.985}} onClick={() => a.openFood()}><Plus size={18} /> Log a meal</motion.button>
+        <LogMealButton full onClick={() => a.openFood()} />
       </section>
       <section className="food-hero"><span className="pill light">FAMILIAR FOOD. FRESH BALANCE.</span><div className="food-hero-content"><div className="food-hero-copy"><h2>Your plate.<br /><span>Your pace.</span></h2><p>Rice & curry belongs here.<br />Find portions that work for you.</p></div><PlateArt /></div><button className="hero-link" onClick={() => a.navigate('plan')}>Explore your meal plan <ArrowUpRight size={16}/></button><span className="hero-note">SRI LANKAN MEALS, THOUGHTFULLY PORTIONED</span></section>
     </Reveal>

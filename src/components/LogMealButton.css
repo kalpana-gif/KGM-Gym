@@ -1,0 +1,63 @@
+/*
+From Uiverse.io by zebra76966 - https://uiverse.io/zebra76966/brown-emu-91
+MIT License, Copyright (c) zebra76966 (Rohit Sharma)
+*/
+.kgm-log-meal {
+  background:linear-gradient(140deg,var(--accent-hover) 0%,var(--accent) 100%);
+  border-radius:45px;
+  font-size:25px;
+  font-weight:750;
+  text-align:left;
+  padding:11px 0;
+  border:4px solid var(--charcoal);
+  box-shadow:-6px -5px 18px #FFFFFF1A;
+  cursor:pointer;
+  max-width:100%;
+  line-height:1.5;
+  flex-shrink:0;
+}
+.kgm-log-meal__main {
+  border-radius:45px;
+  color:var(--night);
+  padding:11px 25px 11px 2px;
+  box-shadow:inset 0 0 5px #11111100;
+  transition:all .5s ease-in-out;
+  border:1px solid transparent;
+  white-space:nowrap;
+}
+.kgm-log-meal__blur {
+  background:linear-gradient(318deg,var(--accent-hover) 0%,var(--green) 100%);
+  border-radius:100%;
+  margin-left:0;
+  padding:8px 23px;
+  filter:blur(1px);
+  text-align:center;
+}
+.kgm-log-meal__icon {
+  position:relative;
+  margin-right:20px;
+}
+.kgm-log-meal__plus {
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  font-weight:400;
+}
+.kgm-log-meal__main:hover,
+.kgm-log-meal:focus-visible .kgm-log-meal__main {
+  box-shadow:inset 0 0 5px #11111199;
+  border:1px solid #1A1A1A80;
+  color:color-mix(in srgb,var(--night) 65%,transparent);
+}
+.kgm-log-meal--full {
+  width:100%;
+  text-align:center;
+  margin-top:10px;
+}
+@media (max-width:600px) {
+  .kgm-log-meal { font-size:20px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .kgm-log-meal__main { transition:none; }
+}

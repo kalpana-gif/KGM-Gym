@@ -3116,7 +3116,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px so
 .page-heading>div {
   min-width:0;
 }
-.page-heading>.btn {
+.page-heading>.btn,.page-heading>.kgm-log-meal {
   flex-shrink:0;
 }
 .connection-label {
@@ -3251,7 +3251,7 @@ summary {
   .heading-art { display:none; }
   .today-heading { min-height:0; padding:8px 0; }
   .page-heading { gap:18px; flex-direction:column; }
-  .page-heading>.btn { width:100%; }
+  .page-heading>.btn,.page-heading>.kgm-log-meal { width:100%; }
   .page-heading h1,.today-heading h1 { font-size:clamp(2rem,7.8vw,2.625rem); line-height:1.1; letter-spacing:-1.3px; }
   .workout-hero-copy { padding-right:0; }
   .workout-hero>.fitness-art { display:none; }

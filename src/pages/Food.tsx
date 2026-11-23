@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Search, Plus, Star, RotateCcw } from 'lucide-react';
 import { useApp } from '../context';
 import { FoodMark, Modal, SectionHead } from '../components/ui';
+import LogMealButton from '../components/LogMealButton';
 import { records, remove, save } from '../lib/db';
 import { total } from '../lib/calories';
 import { primaryServing } from '../lib/servings';
@@ -19,7 +20,7 @@ export default function Food() {
     if (existing) await remove(existing); else await save(a.owner, 'favorites', { foodId: f.id });
   });
   return <>
-    <div className="page-heading"><div><p className="eyebrow">FAMILIAR FOODS, BETTER AWARENESS</p><h1>What’s on your plate<span>?</span></h1><p>Search Sri Lankan staples, bakery items and protein supplements, or create a food that’s yours.</p></div><button className="btn primary" onClick={() => a.openFood()}><Plus size={17} />Log a meal</button></div>
+    <div className="page-heading"><div><p className="eyebrow">FAMILIAR FOODS, BETTER AWARENESS</p><h1>What’s on your plate<span>?</span></h1><p>Search Sri Lankan staples, bakery items and protein supplements, or create a food that’s yours.</p></div><LogMealButton onClick={() => a.openFood()} /></div>
     <section className="card food-search-card"><label className="search-field"><Search size={19} /><input aria-label="Search food catalog" placeholder="Search rice, fish buns, Gold Standard…" value={search} onChange={e => setSearch(e.target.value)} /></label><div className="filter-row" role="group" aria-label="Food categories">{['all', 'favorites', 'bakery', 'supplements', 'grain', 'protein', 'vegetable', 'fruit', 'extra'].map(g => <button key={g} className={group === g ? 'active' : ''} aria-pressed={group === g} onClick={() => setGroup(g)}>{g === 'all' ? 'All foods' : g === 'bakery' ? 'Bakery & short eats' : g === 'supplements' ? 'Protein supplements' : g[0].toUpperCase() + g.slice(1)}</button>)}</div></section>
     <div className="button-row food-tools"><button className="btn secondary" onClick={() => setCustom(true)}><Plus size={16} />Custom food</button><button className="btn secondary" onClick={() => setRecipe(true)}><Plus size={16} />Custom recipe</button><button className="text-btn" onClick={() => void a.run(async () => setDeleted((await records<Meal>(a.owner, 'meal_logs', true)).filter(r => r.deleted)))}><RotateCcw size={16} />Recently deleted meals</button></div>
     <SectionHead title={`${found.length} foods to explore`} text={group === 'supplements' ? 'Label values per serving and per 100 g of dry powder. Match your pack’s flavour and serving weight. Water adds no calories; log milk separately.' : group === 'bakery' ? 'Sample recipe estimates per 100 g and per piece. Bakery sizes, fillings and oil absorption vary; edit grams to match your portion.' : 'Values per 100 g of edible food. Recipes and local-food proxies are estimates.'} />
