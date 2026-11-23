@@ -11,7 +11,7 @@ export type Profile = {
 export type Macros = { protein: number; carbs: number; fat: number };
 export type Food = {
   id: string; name: string; aliases: string[]; kcal: number; macros: Macros;
-  state: 'cooked' | 'raw' | 'ready'; group: 'grain' | 'protein' | 'vegetable' | 'fruit' | 'extra';
+  state: 'cooked' | 'raw' | 'ready'; group: 'grain' | 'protein' | 'vegetable' | 'fruit' | 'extra' | 'bakery' | 'supplements';
   servings: { label: string; grams: number; approximate: boolean }[];
   source: string; sourceUrl?: string; uncertainty: 'reference' | 'recipe estimate' | 'user supplied' | 'ai estimate';
   allergens: string[]; vegetarian: boolean; ingredients?: { foodId: string; grams: number }[];

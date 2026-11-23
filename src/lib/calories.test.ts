@@ -45,6 +45,13 @@ describe('local food parser',()=>{
     for(const input of ['one plate rice','1 cup cooked white rice','mystery curry','chicken curry','2 roti'])
       expect(parseFoodText(input,catalog)[0].item).toBeUndefined();
   });
+  it('recognizes bakery fillings and aliases with grams, but requires confirmation of approximate piece counts',()=>{
+    const parsed=parseFoodText('100 g malu paan, 90 g fish pastries, 110 g egg rolls, 80 g veg samosas',catalog);
+    expect(parsed.map(p=>p.item?.food.id)).toEqual(['fish-bun','fish-pastry','egg-roll','vegetable-samosa']);
+    expect(parsed.map(p=>p.item?.grams)).toEqual([100,90,110,80]);
+    for(const input of ['2 fish buns','1 fish pastry','2 egg rolls'])
+      expect(parseFoodText(input,catalog)[0].reason).toMatch(/Choose grams or a defined serving/);
+  });
 });
 describe('calculated meal plans',()=>{
   it('produces seven days whose ingredient totals match the target within rounding',()=>{
@@ -60,5 +67,15 @@ describe('calculated meal plans',()=>{
     const p={...initialProfile,preference:'vegetarian' as const,allergies:'egg, milk, coconut'};
     const plan=makePlan(p,2100,'2026-11-21');
     expect(plan.flatMap(d=>d.meals.flatMap(m=>m.items)).every(i=>allowed(i.food,p))).toBe(true);
+  });
+  it('keeps bakery fish, egg, dairy and wheat ingredients in dietary filtering',()=>{
+    expect(allowed(foodById('fish-bun'),{...initialProfile,allergies:'seafood'})).toBe(false);
+    expect(allowed(foodById('egg-roll'),{...initialProfile,allergies:'eggs'})).toBe(false);
+    expect(allowed(foodById('vegetable-pastry'),{...initialProfile,allergies:'dairy'})).toBe(false);
+    expect(allowed(foodById('vegetable-samosa'),{...initialProfile,allergies:'gluten'})).toBe(false);
+    const vegetarian={...initialProfile,preference:'vegetarian' as const};
+    expect(allowed(foodById('fish-pastry'),vegetarian)).toBe(false);
+    expect(allowed(foodById('vegetable-bun'),vegetarian)).toBe(true);
+    expect(allowed(foodById('seeni-sambol-bun'),vegetarian)).toBe(true);
   });
 });

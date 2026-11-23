@@ -4,6 +4,7 @@ import { useApp } from '../context';
 import { FoodMark, Modal, SectionHead } from '../components/ui';
 import { records, remove, save } from '../lib/db';
 import { total } from '../lib/calories';
+import { primaryServing } from '../lib/servings';
 import type { Food as FoodType, LocalRecord, Meal } from '../types';
 
 export default function Food() {
@@ -18,25 +19,30 @@ export default function Food() {
     if (existing) await remove(existing); else await save(a.owner, 'favorites', { foodId: f.id });
   });
   return <>
-    <div className="page-heading"><div><p className="eyebrow">FAMILIAR FOODS, BETTER AWARENESS</p><h1>What’s on your plate<span>?</span></h1><p>Search Sri Lankan staples, or create a food that’s yours.</p></div><button className="btn primary" onClick={() => a.openFood()}><Plus size={17} />Log a meal</button></div>
-    <section className="card food-search-card"><label className="search-field"><Search size={19} /><input aria-label="Search food catalog" placeholder="Search rice, parippu, hoppers…" value={search} onChange={e => setSearch(e.target.value)} /></label><div className="filter-row" role="group" aria-label="Food categories">{['all', 'favorites', 'grain', 'protein', 'vegetable', 'fruit', 'extra'].map(g => <button key={g} className={group === g ? 'active' : ''} aria-pressed={group === g} onClick={() => setGroup(g)}>{g === 'all' ? 'All foods' : g[0].toUpperCase() + g.slice(1)}</button>)}</div></section>
+    <div className="page-heading"><div><p className="eyebrow">FAMILIAR FOODS, BETTER AWARENESS</p><h1>What’s on your plate<span>?</span></h1><p>Search Sri Lankan staples, bakery items and protein supplements, or create a food that’s yours.</p></div><button className="btn primary" onClick={() => a.openFood()}><Plus size={17} />Log a meal</button></div>
+    <section className="card food-search-card"><label className="search-field"><Search size={19} /><input aria-label="Search food catalog" placeholder="Search rice, fish buns, Gold Standard…" value={search} onChange={e => setSearch(e.target.value)} /></label><div className="filter-row" role="group" aria-label="Food categories">{['all', 'favorites', 'bakery', 'supplements', 'grain', 'protein', 'vegetable', 'fruit', 'extra'].map(g => <button key={g} className={group === g ? 'active' : ''} aria-pressed={group === g} onClick={() => setGroup(g)}>{g === 'all' ? 'All foods' : g === 'bakery' ? 'Bakery & short eats' : g === 'supplements' ? 'Protein supplements' : g[0].toUpperCase() + g.slice(1)}</button>)}</div></section>
     <div className="button-row food-tools"><button className="btn secondary" onClick={() => setCustom(true)}><Plus size={16} />Custom food</button><button className="btn secondary" onClick={() => setRecipe(true)}><Plus size={16} />Custom recipe</button><button className="text-btn" onClick={() => void a.run(async () => setDeleted((await records<Meal>(a.owner, 'meal_logs', true)).filter(r => r.deleted)))}><RotateCcw size={16} />Recently deleted meals</button></div>
-    <SectionHead title={`${found.length} foods to explore`} text="Values per 100 g of edible food. Recipes and local-food proxies are estimates." />
-    <ul className="catalog-grid" aria-label="Food catalog">{found.map(f => <li className="card food-card" key={f.id}>
+    <SectionHead title={`${found.length} foods to explore`} text={group === 'supplements' ? 'Label values per serving and per 100 g of dry powder. Match your pack’s flavour and serving weight. Water adds no calories; log milk separately.' : group === 'bakery' ? 'Sample recipe estimates per 100 g and per piece. Bakery sizes, fillings and oil absorption vary; edit grams to match your portion.' : 'Values per 100 g of edible food. Recipes and local-food proxies are estimates.'} />
+    <ul className="catalog-grid" aria-label="Food catalog">{found.map(f => {
+      const serving = primaryServing(f);
+      return <li className="card food-card" key={f.id}>
       <div className="food-card-head">
         <div className="food-identity"><FoodMark food={f} /><div className="food-title"><h3 id={`food-name-${f.id}`}>{f.name}</h3><p className="food-mobile-kcal"><strong>{Math.round(f.kcal)}</strong> kcal <span>/ 100 g</span></p></div></div>
         <button className={`icon-btn ${favoriteIds.includes(f.id) ? 'favorited' : ''}`} aria-label={`${favoriteIds.includes(f.id) ? 'Unfavorite' : 'Favorite'} ${f.name}`} aria-pressed={favoriteIds.includes(f.id)} onClick={() => void toggle(f)}><Star size={18} fill={favoriteIds.includes(f.id) ? 'currentColor' : 'none'} /></button>
       </div>
       <div className="food-nutrition">
         <p className="food-kcal"><strong>{Math.round(f.kcal)}</strong> kcal <span>/ 100 g</span></p>
+        {serving && <p className="food-piece">{f.group === 'supplements'
+          ? <><strong>{Math.round(f.kcal * serving.grams / 100)} kcal</strong> · <strong>{Math.round(f.macros.protein * serving.grams / 100)} g protein</strong><br /><span>{serving.label} · {serving.grams} g powder</span></>
+          : <>About <strong>{Math.round(f.kcal * serving.grams / 100)} kcal</strong> / piece <span>({serving.grams} g approx.)</span></>}</p>}
         <p className="food-macros"><span><strong>{Math.round(f.macros.protein)} g</strong> protein</span><span className="food-macro-separator" aria-hidden="true"> · </span><span><strong>{Math.round(f.macros.carbs)} g</strong> carbs</span><span className="food-macro-separator" aria-hidden="true"> · </span><span><strong>{Math.round(f.macros.fat)} g</strong> fat</span></p>
       </div>
       <div className="food-metadata">
         <div className="food-tags"><span>{f.state}</span><span>{f.uncertainty}</span></div>
-        <details><summary>Source & recipe</summary><p className="fineprint">{f.source}</p>{f.instructions && <p>{f.instructions}</p>}{f.ingredients && <p className="fineprint">Batch: {f.ingredients.map(i => `${i.grams} g ${a.foods.find(x => x.id === i.foodId)?.name ?? i.foodId}`).join(' · ')}. Assumed yield: {f.yieldGrams} g.</p>}</details>
+        <details><summary>{f.group === 'supplements' ? 'Source & label' : 'Source & recipe'}</summary><p className="fineprint">{f.source}</p>{f.group === 'supplements' && f.sourceUrl && <p><a href={f.sourceUrl} target="_blank" rel="noreferrer">View product label</a></p>}{f.instructions && <p>{f.instructions}</p>}{f.ingredients && <p className="fineprint">Batch: {f.ingredients.map(i => `${i.grams} g ${a.foods.find(x => x.id === i.foodId)?.name ?? i.foodId}`).join(' · ')}. Assumed yield: {f.yieldGrams} g.</p>}</details>
       </div>
       <button className="btn secondary full food-add" aria-label="Add to meal" aria-describedby={`food-name-${f.id}`} title={`Add ${f.name} to meal`} onClick={() => a.openFood(undefined, undefined, f)}><Plus size={18} aria-hidden="true" /><span className="food-add-label">Add to meal</span></button>
-    </li>)}</ul>
+    </li>; })}</ul>
     {!found.length && <div className="empty"><h3>No foods found</h3><p>Try another name, or add a custom food.</p></div>}
 
     {deleted.map(r => <div className="card restore-row" key={r.id}><span>{r.data.name} · {r.data.date}</span><button className="text-btn" onClick={() => void a.run(async () => { await save(a.owner, 'meal_logs', r.data, r.id); setDeleted(rows => rows.filter(x => x.id !== r.id)); }, 'Meal restored.')}><RotateCcw size={15} />Restore</button></div>)}

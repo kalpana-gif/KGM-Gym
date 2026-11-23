@@ -1,13 +1,14 @@
 import data from './usda.json' with { type: 'json' };
 import type { Food } from '../types';
 import { nutrients } from '../lib/calories.ts';
+import { supplements } from './supplements.ts';
 export const basics: Food[] = data as Food[];
 basics.push({ id: 'water', name: 'Water / plain unsweetened tea', aliases: ['water', 'plain tea', 'unsweetened tea'], kcal: 0,
   macros: { protein: 0, fat: 0, carbs: 0 }, state: 'ready', group: 'extra',
   servings: [{ label: 'cup', grams: 200, approximate: true }], source: 'Water: zero food energy. Plain tea is treated as negligible; add milk and sugar separately.',
   uncertainty: 'recipe estimate', allergens: [], vegetarian: true });
 
-type RecipeDef = [string, string, string[], number, [string, number][], string, Food['group']];
+type RecipeDef = [string, string, string[], number, [string, number][], string, Food['group'], number?];
 const definitions: RecipeDef[] = [
   ['dhal', 'Dhal curry', ['dhal', 'parippu', 'dhal curry', 'lentil curry'], 500, [['lentils', 400], ['coconut-milk', 60], ['onion', 35], ['oil', 5]], 'Simmer boiled lentils with onion and spices. Stir in measured coconut milk and oil. Add water as needed; weigh the finished batch.', 'protein'],
   ['chicken-curry', 'Chicken curry', ['chicken curry'], 500, [['chicken', 350], ['onion', 70], ['tomato', 50], ['coconut-milk', 50], ['oil', 10]], 'Simmer cooked chicken with onion, tomato, curry spices, measured coconut milk and oil. Adjust water and weigh the finished batch.', 'protein'],
@@ -25,9 +26,23 @@ const definitions: RecipeDef[] = [
   ['kottu', 'Chicken kottu (sample recipe)', ['chicken kottu', 'kottu'], 800, [['roti', 300], ['chicken', 180], ['egg', 100], ['carrot', 100], ['onion', 80], ['oil', 20]], 'Chop cooked roti and stir-fry with vegetables, chicken, eggs and measured oil. Restaurant sauces and portions can differ substantially.', 'grain'],
   ['veg-kottu', 'Vegetarian kottu (sample recipe)', ['vegetarian kottu', 'veg kottu'], 800, [['roti', 280], ['chickpeas', 200], ['carrot', 160], ['onion', 120], ['oil', 15]], 'Stir-fry chopped roti, chickpeas and vegetables with measured oil and spices.', 'grain'],
   ['milk-tea', 'Milk tea with sugar', ['milk tea', 'tea with milk'], 200, [['water', 145], ['milk', 50], ['sugar', 5]], 'Brew tea and add the measured milk and sugar. Change the recipe for your usual amounts.', 'extra'],
+  ['fish-bun', 'Fish bun', ['fish buns', 'malu paan', 'malu pan', 'මාළු පාන්'], 1000, [['white-flour', 380], ['milk', 100], ['butter', 30], ['sugar', 25], ['fish', 180], ['potato', 160], ['onion', 60], ['oil', 20], ['water', 170]], 'Sample batch of 10 buns. Make a yeast dough with flour, milk, butter, sugar and water; fill with cooked fish, potato, onion and measured oil, then bake. Yeast, spices and salt are omitted from the estimate.', 'bakery', 100],
+  ['chicken-bun', 'Chicken bun', ['chicken buns'], 1000, [['white-flour', 380], ['milk', 100], ['butter', 30], ['sugar', 25], ['chicken', 180], ['potato', 160], ['onion', 60], ['oil', 20], ['water', 170]], 'Sample batch of 10 buns. Fill a yeast dough with cooked chicken, potato and onion cooked in measured oil; bake. Yeast, spices and salt are omitted from the estimate.', 'bakery', 100],
+  ['vegetable-bun', 'Vegetable bun', ['vegetable buns', 'veg bun', 'veg buns'], 1000, [['white-flour', 380], ['milk', 100], ['butter', 30], ['sugar', 25], ['potato', 280], ['carrot', 70], ['onion', 50], ['oil', 20], ['water', 170]], 'Sample batch of 10 buns. Fill a yeast dough with potato, carrot and onion cooked in measured oil; bake. This sample contains milk and butter. Yeast, spices and salt are omitted from the estimate.', 'bakery', 100],
+  ['seeni-sambol-bun', 'Seeni sambol bun', ['seeni sambol buns', 'seeni sambol paan', 'seeni sambol banis'], 1000, [['white-flour', 380], ['milk', 100], ['butter', 30], ['sugar', 45], ['onion', 350], ['oil', 50], ['water', 170]], 'Sample batch of 10 buns with sweet onion filling. Cook onions with measured oil and sugar, fill the yeast dough and bake. No Maldive fish is included. Yeast, spices and salt are omitted from the estimate.', 'bakery', 100],
+  ['fish-pastry', 'Fish pastry', ['fish pastries', 'malu pastry'], 900, [['white-flour', 300], ['butter', 200], ['fish', 150], ['potato', 180], ['onion', 70], ['water', 150]], 'Sample batch of 10 pastries. Fold butter into flour-and-water dough, fill with cooked fish, potato and onion, then bake. Pastry fat content varies; egg wash and sauces are not included.', 'bakery', 90],
+  ['chicken-pastry', 'Chicken pastry', ['chicken pastries'], 900, [['white-flour', 300], ['butter', 200], ['chicken', 150], ['potato', 180], ['onion', 70], ['water', 150]], 'Sample batch of 10 pastries. Fold butter into flour-and-water dough, fill with cooked chicken, potato and onion, then bake. Pastry fat content varies; egg wash and sauces are not included.', 'bakery', 90],
+  ['vegetable-pastry', 'Vegetable pastry', ['vegetable pastries', 'veg pastry', 'veg pastries'], 900, [['white-flour', 300], ['butter', 200], ['potato', 280], ['carrot', 70], ['onion', 50], ['water', 150]], 'Sample batch of 10 pastries. Fold butter into flour-and-water dough, fill with potato, carrot and onion, then bake. This sample contains butter; egg wash and sauces are not included.', 'bakery', 90],
+  ['fish-roll', 'Fish roll', ['fish rolls', 'chinese fish roll', 'chinese fish rolls'], 1000, [['white-flour', 160], ['bread', 120], ['fish', 180], ['potato', 240], ['onion', 60], ['oil', 90], ['milk', 80], ['water', 250]], 'Sample batch of 10 fried rolls. Wrap fish, potato and onion filling in thin flour-and-milk pancakes, coat in breadcrumbs and fry. Whole-wheat bread is a breadcrumb proxy. The oil amount is assumed retained oil in the finished food, not the frying-pot volume.', 'bakery', 100],
+  ['chicken-roll', 'Chicken roll', ['chicken rolls', 'chinese chicken roll', 'chinese chicken rolls'], 1000, [['white-flour', 160], ['bread', 120], ['chicken', 180], ['potato', 240], ['onion', 60], ['oil', 90], ['milk', 80], ['water', 250]], 'Sample batch of 10 fried rolls. Wrap chicken, potato and onion filling in thin flour-and-milk pancakes, coat in breadcrumbs and fry. Whole-wheat bread is a breadcrumb proxy. The oil amount is assumed retained oil in the finished food, not the frying-pot volume.', 'bakery', 100],
+  ['vegetable-roll', 'Vegetable roll', ['vegetable rolls', 'veg roll', 'veg rolls', 'chinese vegetable roll'], 1000, [['white-flour', 160], ['bread', 120], ['potato', 350], ['carrot', 70], ['onion', 60], ['oil', 90], ['milk', 80], ['water', 250]], 'Sample batch of 10 fried rolls with potato, carrot and onion filling, flour-and-milk pancakes and breadcrumb coating. Whole-wheat bread is a breadcrumb proxy. The oil amount is assumed retained oil in the finished food. This sample contains milk.', 'bakery', 100],
+  ['egg-roll', 'Egg roll', ['egg rolls', 'chinese egg roll', 'chinese egg rolls'], 1100, [['white-flour', 160], ['bread', 120], ['egg', 300], ['potato', 250], ['onion', 60], ['oil', 90], ['milk', 80], ['water', 250]], 'Sample batch of 10 fried rolls. Wrap boiled egg, potato and onion in flour-and-milk pancakes, coat in breadcrumbs and fry. Whole-wheat bread is a breadcrumb proxy. The oil amount is assumed retained oil in the finished food.', 'bakery', 110],
+  ['fish-cutlet', 'Fish cutlet', ['fish cutlets', 'malu cutlet'], 600, [['fish', 200], ['potato', 200], ['bread', 80], ['onion', 40], ['oil', 50]], 'Sample batch of 15 small cutlets. Shape cooked fish, potato and onion into balls, coat in breadcrumbs and fry. Whole-wheat bread is a breadcrumb proxy; egg coating is not included. The oil amount is assumed retained oil in the finished food.', 'bakery', 40],
+  ['vegetable-samosa', 'Vegetable samosa', ['vegetable samosas', 'veg samosa', 'veg samosas', 'samosa', 'samosas'], 800, [['white-flour', 250], ['potato', 280], ['carrot', 80], ['onion', 60], ['oil', 100], ['water', 150]], 'Sample batch of 10 samosas. Fill a flour-and-water wrapper with potato, carrot and onion, then fry. The oil amount includes dough oil and assumed retained frying oil in the finished food. Sauces are not included.', 'bakery', 80],
+  ['kimbula-bun', 'Kimbula bun', ['kimbula buns', 'kimbula banis', 'kimbula banis bun', 'sugar bun', 'sugar buns'], 900, [['white-flour', 500], ['milk', 100], ['butter', 60], ['sugar', 120], ['water', 230]], 'Sample batch of 10 sugar-coated buns. Make a yeast dough with flour, milk, butter, sugar and water, shape into long buns and bake. Sugar includes the topping. Yeast and salt are omitted from the estimate.', 'bakery', 90],
 ];
 const built: Food[] = [...basics];
-for (const [id, name, aliases, yieldGrams, ingredients, instructions, group] of definitions) {
+for (const [id, name, aliases, yieldGrams, ingredients, instructions, group, pieceGrams] of definitions) {
   const parts = ingredients.map(([foodId, grams]) => ({ food: built.find(f => f.id === foodId)!, grams }));
   if (parts.some(p => !p.food)) throw new Error(`Missing ingredient in ${id}`);
   const sums = parts.reduce((a, p) => {
@@ -36,9 +51,11 @@ for (const [id, name, aliases, yieldGrams, ingredients, instructions, group] of 
   const ratio = 100 / yieldGrams;
   built.push({ id, name, aliases, kcal: sums.kcal * ratio, macros: { protein: sums.protein * ratio, fat: sums.fat * ratio, carbs: sums.carbs * ratio },
     state: 'cooked', group, vegetarian: parts.every(p => p.food.vegetarian), allergens: [...new Set(parts.flatMap(p => p.food.allergens))],
-    servings: [{ label: '100 g', grams: 100, approximate: false }, { label: 'piece / serving', grams: ['string-hoppers', 'hopper'].includes(id) ? 50 : id === 'egg-hopper' ? 140 : 100, approximate: true }],
-    source: 'LankaFit provisional recipe: calculated from linked USDA ingredient references and an assumed cooked yield. Spices and salt are not included; adjust the recipe and weigh your finished batch.',
+    servings: [{ label: '100 g', grams: 100, approximate: false }, { label: pieceGrams ? 'piece' : 'piece / serving', grams: pieceGrams ?? (['string-hoppers', 'hopper'].includes(id) ? 50 : id === 'egg-hopper' ? 140 : 100), approximate: true }],
+    source: group === 'bakery'
+      ? 'Sample Sri Lankan bakery recipe calculated from linked USDA ingredient references and an assumed finished batch weight. Calories and piece sizes are estimates, not measured bakery nutrition. Filling, butter or margarine, oil absorption and size vary by bakery. Fish and breadcrumbs use reference proxies; coconut oil is the sample oil. Adjust ingredients and weigh your portion for a closer estimate.'
+      : 'LankaFit provisional recipe: calculated from linked USDA ingredient references and an assumed cooked yield. Spices and salt are not included; adjust the recipe and weigh your finished batch.',
     uncertainty: 'recipe estimate', ingredients: ingredients.map(([foodId, grams]) => ({ foodId, grams })), yieldGrams, instructions });
 }
-export const catalog = built;
+export const catalog = [...built, ...supplements];
 export const foodById = (id: string) => catalog.find(f => f.id === id)!;

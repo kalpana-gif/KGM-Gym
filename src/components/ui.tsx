@@ -24,7 +24,7 @@ export function Modal({ title, children, close, wide = false, busy = false, acti
   </motion.dialog>;
 }
 export function FoodMark({ food }: { food: Food }) {
-  const emoji = food.group === 'grain' ? '🍚' : food.group === 'protein' ? (food.vegetarian ? '🥚' : '🐟') : food.group === 'vegetable' ? '🥬' : food.group === 'fruit' ? '🍌' : '🥥';
+  const emoji = food.group === 'supplements' ? '🥤' : food.group === 'bakery' ? '🥐' : food.group === 'grain' ? '🍚' : food.group === 'protein' ? (food.vegetarian ? '🥚' : '🐟') : food.group === 'vegetable' ? '🥬' : food.group === 'fruit' ? '🍌' : '🥥';
   return <span className={`food-mark ${food.group}`} aria-hidden="true">{emoji}</span>;
 }
 export function Empty({ title, text, action, actionLabel }: { title: string; text: string; action?: () => void; actionLabel?: string }) {

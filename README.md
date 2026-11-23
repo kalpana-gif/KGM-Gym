@@ -150,9 +150,19 @@ Private browsing or clearing site data can remove IndexedDB. Use exports or clou
 
 ## Nutrition and exercise provenance
 
-`src/data/usda.json` contains 27 foods extracted from the official **USDA FoodData Central SR Legacy CSV dataset**. Each includes its actual FDC ID and source description. USDA reference foods are not necessarily identical to local Sri Lankan varieties.
+`src/data/usda.json` contains 30 foods extracted from the official **USDA FoodData Central SR Legacy CSV dataset**. Each includes its actual FDC ID and source description. USDA reference foods are not necessarily identical to local Sri Lankan varieties.
 
 Red rice, curd, fish and leafy greens use clearly described reference proxies. Sri Lankan prepared dishes are **provisional recipes**, calculated from the ingredient references and explicit assumed finished weights. Oil, coconut milk and sugar are included where present. Household measures remain approximate.
+
+The **Bakery & short eats** category includes 14 sample recipes: fish, chicken and vegetable buns; seeni sambol buns; fish, chicken and vegetable pastries; fish, chicken, vegetable and egg rolls; fish cutlets; vegetable samosas; and kimbula buns. Cards show calories and macros per 100 g plus estimated calories per piece. Adding one starts with its approximate piece weight, which can be edited in the meal review. Piece counts in typed meals still require a serving choice rather than silently assuming a bakery portion.
+
+Bakery nutrition is calculated from sample ingredients and assumed yields, not laboratory or vendor measurements. White flour, boiled potato and butter have linked USDA references. Breadcrumbs use the existing whole-wheat bread reference and fish uses the existing cooked-fish proxy. Sample fried-food oil amounts represent retained oil, not the volume used for frying. The source and recipe details explain the assumptions; actual bakery fillings, fats and sizes differ.
+
+**Protein supplements** includes 12 flavour-specific label references across whey blends, isolates/hydrolyzed whey, casein, pea protein, soy protein and a mass gainer. Gold Standard whey has separate Double Rich Chocolate and Vanilla Ice Cream entries; general Gold Standard aliases select the clearly named chocolate entry. Other entries cover ON Isolate and Casein, Myprotein Impact Whey and Isolate, Dymatize ISO100 and Super Mass Gainer, MuscleTech Nitro-Tech and Whey Gold, and NOW Sports Pea and Soy Protein. This is a selection of products, not every brand or formulation.
+
+Supplement definitions live in `src/data/supplements.ts`. Manufacturer nutrition tables and specific NIH DSLD manufacturer-label snapshots provide labelled serving grams, calories, protein, carbs, fat and allergen information. The source records the flavour, market, label version and source URL. Rounded per-serving values are scaled to the catalog’s per-100-g basis without forcing calories to equal macro arithmetic. Cards also show labelled serving calories and protein, and link to the source label. Scoop measures are approximate.
+
+Adding a supplement starts with one labelled serving of **dry powder**. Half, full and double portions are selectable; grams remain editable. Water adds no energy. Milk, fruit, sugar and other ingredients must be added as separate foods in the same meal, rather than applying powder nutrition to the full weight of a mixed shake. Label and market variations can be entered using Custom food.
 
 To reproduce the reference extraction:
 

@@ -702,6 +702,95 @@
     "vegetarian": true
   },
   {
+    "id": "white-flour",
+    "name": "White all-purpose flour",
+    "aliases": [
+      "white flour",
+      "all purpose flour",
+      "plain flour"
+    ],
+    "kcal": 364.0,
+    "macros": {
+      "protein": 10.33,
+      "fat": 0.98,
+      "carbs": 76.31
+    },
+    "state": "raw",
+    "group": "grain",
+    "servings": [
+      {
+        "label": "100 g",
+        "grams": 100,
+        "approximate": false
+      }
+    ],
+    "source": "USDA FoodData Central SR Legacy; FDC 169761: Wheat flour, white, all-purpose, unenriched.",
+    "sourceUrl": "https://fdc.nal.usda.gov/food-details/169761/nutrients",
+    "uncertainty": "reference",
+    "allergens": [
+      "wheat"
+    ],
+    "vegetarian": true
+  },
+  {
+    "id": "potato",
+    "name": "Boiled potato",
+    "aliases": [
+      "potato",
+      "potatoes",
+      "boiled potatoes"
+    ],
+    "kcal": 86.0,
+    "macros": {
+      "protein": 1.71,
+      "fat": 0.1,
+      "carbs": 20.01
+    },
+    "state": "cooked",
+    "group": "vegetable",
+    "servings": [
+      {
+        "label": "100 g",
+        "grams": 100,
+        "approximate": false
+      }
+    ],
+    "source": "USDA FoodData Central SR Legacy; FDC 170440: Potatoes, boiled, cooked without skin, flesh, without salt.",
+    "sourceUrl": "https://fdc.nal.usda.gov/food-details/170440/nutrients",
+    "uncertainty": "reference",
+    "allergens": [],
+    "vegetarian": true
+  },
+  {
+    "id": "butter",
+    "name": "Salted butter",
+    "aliases": [
+      "butter"
+    ],
+    "kcal": 717.0,
+    "macros": {
+      "protein": 0.85,
+      "fat": 81.11,
+      "carbs": 0.06
+    },
+    "state": "ready",
+    "group": "extra",
+    "servings": [
+      {
+        "label": "100 g",
+        "grams": 100,
+        "approximate": false
+      }
+    ],
+    "source": "USDA FoodData Central SR Legacy; FDC 173410: Butter, salted.",
+    "sourceUrl": "https://fdc.nal.usda.gov/food-details/173410/nutrients",
+    "uncertainty": "reference",
+    "allergens": [
+      "milk"
+    ],
+    "vegetarian": true
+  },
+  {
     "id": "rice-flour",
     "name": "Rice flour",
     "aliases": [
