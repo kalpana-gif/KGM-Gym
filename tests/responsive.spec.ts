@@ -54,8 +54,8 @@ for (const width of [320, 360, 390, 768, 1024, 1440]) {
       await expect(page).toHaveTitle(/KGM-FIT/);
       await expect(page.getByRole('heading', { name: /Small steps/ })).toBeVisible();
       await fits(page, 'Today before setup');
-      await page.getByRole('banner').getByRole('button', { name: 'Your preferences', exact: true }).click();
-      await expect(page.getByRole('dialog', { name: 'Your starting point' })).toBeVisible();
+      await page.getByRole('banner').getByRole('button', { name: 'Your profile', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Your profile' })).toBeVisible();
       await fits(page, 'Preferences with energy ranges');
       if (width === 390) await page.screenshot({ path: 'artifacts/kgm-fit-mobile-preferences.png' });
       if (width <= 600) {
@@ -112,7 +112,7 @@ for (const width of [320, 360, 390, 768, 1024, 1440]) {
       await page.getByRole('button', { name: 'Add ingredient', exact: true }).click();
       await page.getByRole('button', { name: 'Save recipe', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      const search = page.getByPlaceholder('Search rice, parippu, hoppers…');
+      const search = page.getByRole('textbox', { name: 'Search food catalog' });
       await search.fill('Homemade toasted');
       await expect(search).toHaveValue('Homemade toasted');
       await expect(page.locator('.catalog-grid>.food-card')).toHaveCount(1);
@@ -184,7 +184,7 @@ test('phone landscape and reduced viewport keep forms scrollable', async ({ page
   await page.setViewportSize({ width: 667, height: 375 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  await page.getByRole('banner').getByRole('button', { name: 'Your preferences', exact: true }).click();
+  await page.getByRole('banner').getByRole('button', { name: 'Your profile', exact: true }).click();
   await fits(page, 'Landscape preferences');
   await page.getByRole('button', { name: 'Save details · keep estimates as a range' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

@@ -81,6 +81,7 @@ test('guest uploads a meal photo, reviews calories and saves editable meal detai
   expect(saved[0].data.photoEstimate).toEqual(estimate);
   expect(authCalls).toBe(0);
   await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'Today', exact: true }).click();
+  await page.getByLabel('Diary date', { exact: true }).fill(saved[0].data.date);
   await page.getByRole('button', { name: /Rice and curry photo test/ }).click();
   await expect(page.getByLabel('Calories for Vegetable curry estimate')).toHaveValue('200');
 });

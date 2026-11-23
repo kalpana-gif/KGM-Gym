@@ -11,7 +11,9 @@ npm ci
 npm run dev
 ```
 
-Open the local address printed by Vite. Start in guest mode, review **Your preferences**, and confirm a calorie target. The provided age (29), height (183 cm) and weight (103 kg) are prefilled; the equation input and activity level remain unselected.
+Open the local address printed by Vite. Start in guest mode, open **Your profile**, and confirm a calorie target. The provided age (29), height (183 cm) and weight (103 kg) are prefilled; the equation input and activity level remain unselected.
+
+The profile editor has **Body**, **Meals & everyday life**, and **Movement & health** tabs. Edits remain in one draft, and the target review and save controls stay visible. On phones, the food diary uses **Breakfast**, **Lunch**, **Dinner**, and **Snacks** tabs with separate calorie totals; larger screens show all four meal cards.
 
 ```sh
 npm test

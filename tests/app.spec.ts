@@ -5,7 +5,7 @@ async function captureDashboard(page:Page,path:string) {
     await dismiss.last().click();
     await expect(page.locator('.toast')).toHaveCount(0);
   }
-  for(const card of await page.locator('.diary-card').all()) {
+  for(const card of await page.locator('.diary-card:visible').all()) {
     await card.scrollIntoViewIfNeeded();
     await expect(card).toHaveCSS('opacity','1');
   }
@@ -126,14 +126,14 @@ test('reduced motion and keyboard access keep navigation and dialogs usable',asy
   await page.keyboard.press('Enter');
   await expect(page.locator('#main-content')).toBeFocused();
   const navigation=page.getByRole('navigation',{name:'Mobile navigation'});
-  await page.getByRole('region',{name:'Quick access'}).getByRole('button',{name:'Movement',exact:true}).click();
+  await navigation.getByRole('button',{name:'Workouts',exact:true}).click();
   await expect(page.getByRole('heading',{name:/Build a little momentum/})).toBeVisible();
   await navigation.getByRole('button',{name:'Today',exact:true}).click();
   await navigation.getByRole('button',{name:'Progress',exact:true}).click();
   await expect(navigation.getByRole('button',{name:'Progress',exact:true})).toHaveAttribute('aria-current','page');
   await expect(page.locator('.page-transition')).toHaveCSS('transform','none');
-  await page.getByRole('button',{name:'Your preferences',exact:true}).click();
-  await expect(page.getByRole('dialog',{name:'Your starting point'})).toBeVisible();
+  await page.getByRole('button',{name:'Your profile',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Your profile'})).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

@@ -4,23 +4,30 @@ import { X, Leaf, Plus, ArrowUpRight } from 'lucide-react';
 import type { Food } from '../types';
 import { Context } from '../context';
 import BusyIndicator from './BusyIndicator';
-export function Modal({ title, children, close, wide = false, busy = false, activity }: { title: string; children: ReactNode; close: () => void; wide?: boolean; busy?: boolean; activity?: ReactNode }) {
+export function Modal({ title, children, close, wide = false, busy = false, activity, className = '', headingIcon, navigation, footer }: { title: string; children: ReactNode; close: () => void; wide?: boolean; busy?: boolean; activity?: ReactNode; className?: string; headingIcon?: ReactNode; navigation?: ReactNode; footer?: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const context = useContext(Context);
   const headingId = useId();
   const reduce = useReducedMotion();
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const el = ref.current; el?.showModal(); document.body.style.overflow = 'hidden';
-    return () => { el?.close(); if (!document.querySelector('dialog[open]')) document.body.style.overflow = ''; };
+    return () => {
+      el?.close();
+      if (!document.querySelector('dialog[open]')) document.body.style.overflow = '';
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
   }, []);
-  return <motion.dialog ref={ref} aria-labelledby={headingId} className={`modal ${wide ? 'wide' : ''}`}
+  return <motion.dialog ref={ref} aria-labelledby={headingId} className={`modal ${wide ? 'wide' : ''} ${className}`}
     initial={reduce ? false : { opacity: 0, y: 14, scale: .985 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
     transition={{ duration: reduce ? 0 : .2, ease: [.22, 1, .36, 1] }}
     onCancel={event => { event.preventDefault(); if (!busy) close(); }} onClick={e => { if (!busy && e.target === e.currentTarget) close(); }}>
-    <div className="modal-head"><h2 id={headingId}>{title}</h2><button className="icon-btn" aria-label="Close dialog" disabled={busy} onClick={close}><X size={20} /></button></div>
+    <div className="modal-head"><h2 id={headingId}>{headingIcon}{title}</h2><button className="icon-btn" aria-label="Close dialog" disabled={busy} onClick={close}><X size={20} /></button></div>
     {(activity || context?.working&&!busy) && <div className="modal-activity">{activity || <BusyIndicator title="Updating your space…" detail="Finishing your changes." />}</div>}
-    <div className="modal-body" tabIndex={0}>{children}</div>
+    {navigation}
+    <div className="modal-body" tabIndex={navigation ? -1 : 0}>{children}</div>
+    {footer}
   </motion.dialog>;
 }
 export function FoodMark({ food }: { food: Food }) {
