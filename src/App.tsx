@@ -193,8 +193,30 @@ export default function App() {
   return <Context.Provider value={{owner,rows,profile,date,setDate,target,foods,toast,run,working:pendingTasks>0,openProfile:()=>setModal('profile'),openAccount:()=>setModal('account'),openFood,navigate,conflicts:conflictRows,syncState,syncNow}}>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <div className="app-shell">
-      <aside className="sidebar"><a className="brand" href="/" onClick={e=>{e.preventDefault();navigate('today');}}><span><Flame size={24}/></span>KGM<span className="brand-fit">-FIT</span><small>YOUR EVERYDAY COMPANION</small></a><div className="nav-label">YOUR SPACE</div><nav aria-label="Main navigation">{pages.map(p=><motion.button key={p.key} aria-current={page===p.key?'page':undefined} className={page===p.key?'active':''} whileTap={reduce?undefined:{scale:.98}} onClick={()=>navigate(p.key)}>{page===p.key&&<motion.span aria-hidden="true" className="nav-highlight" layoutId="desktop-nav" transition={{type:'spring',stiffness:420,damping:36,duration:reduce?0:undefined}}/>}<p.icon size={20}/><span>{p.label}</span>{page===p.key&&<i/>}</motion.button>)}</nav><div className="sidebar-bottom"><div className="sidebar-note"><Flame size={24}/><h3>A little better,<br/>every day.</h3><p>You don’t have to change everything to change something.</p><div className="palette-dots" aria-hidden="true"><i/><i/><i/><i/></div></div><button className="sidebar-settings" onClick={()=>setModal('profile')}><CircleUserRound size={18}/>Your profile</button><button className="profile-button" onClick={()=>setModal('account')}><span className="avatar">KG</span><div><strong>My journey</strong><small>{owner.startsWith('user:')?'Connected account':'Device-only guest'}</small></div><Cloud size={17}/></button></div></aside>
-      <div className="main-shell"><header className="topbar"><a className="mobile-brand" href="/" onClick={e=>{e.preventDefault();navigate('today');}}><Flame size={22}/>KGM-FIT</a><div className="breadcrumb">My space <span>/</span> <strong>{pages.find(p=>p.key===page)?.label}</strong></div><div className="top-actions"><span className={`connection ${online?'':'offline'} ${syncIssue?'sync-error':''}`} title={pendingTasks>0?statusLabel:connected?syncState.message:statusLabel} aria-label={statusLabel} role={pendingTasks>0?'status':undefined}>{pendingTasks>0 ? <DotSpinner compact/> : connected || !online ? (syncBusy&&connected&&online ? <DotSpinner compact/> : <StatusIcon size={15}/>) : <span className="status-dot"/>}<span className="connection-label">{statusLabel}</span></span><button className="icon-btn" aria-label="Account and data" onClick={()=>setModal('account')}><Cloud size={20}/></button><button className="icon-btn" aria-label="Your profile" title="Your profile" onClick={()=>setModal('profile')}><CircleUserRound size={20}/></button></div></header>
+      <aside className="sidebar">
+        <div className="sidebar-body">
+          <a className="brand" href="/" onClick={e=>{e.preventDefault();navigate('today');}}><span><Flame size={24}/></span>KGM<span className="brand-fit">-FIT</span><small>YOUR EVERYDAY COMPANION</small></a>
+          <div className="nav-label">YOUR SPACE</div>
+          <nav aria-label="Main navigation">{pages.map(p=><motion.button key={p.key} aria-current={page===p.key?'page':undefined} className={page===p.key?'active':''} whileTap={reduce?undefined:{scale:.98}} onClick={()=>navigate(p.key)}>{page===p.key&&<motion.span aria-hidden="true" className="nav-highlight" layoutId="desktop-nav" transition={{type:'spring',stiffness:420,damping:36,duration:reduce?0:undefined}}/>}<p.icon size={20}/><span>{p.label}</span>{page===p.key&&<i/>}</motion.button>)}</nav>
+        </div>
+        <div className="sidebar-note"><Flame size={24}/><h3>A little better,<br/>every day.</h3><p>You don’t have to change everything to change something.</p><div className="palette-dots" aria-hidden="true"><i/><i/><i/><i/></div></div>
+      </aside>
+      <div className="main-shell">
+        <header className="topbar">
+          <a className="mobile-brand" href="/" onClick={e=>{e.preventDefault();navigate('today');}}><Flame size={22}/>KGM-FIT</a>
+          <div className="breadcrumb">My space <span>/</span> <strong>{pages.find(p=>p.key===page)?.label}</strong></div>
+          <div className="top-actions">
+            <span className={`connection ${online?'':'offline'} ${syncIssue?'sync-error':''}`} title={pendingTasks>0?statusLabel:connected?syncState.message:statusLabel} aria-label={statusLabel} role={pendingTasks>0?'status':undefined}>{pendingTasks>0 ? <DotSpinner compact/> : connected || !online ? (syncBusy&&connected&&online ? <DotSpinner compact/> : <StatusIcon size={15}/>) : <span className="status-dot"/>}<span className="connection-label">{statusLabel}</span></span>
+            <div className="header-profile" role="group" aria-label="Your account">
+              <button className="header-account" aria-label="Account and data" title="Account and data" onClick={()=>setModal('account')}>
+                <span className="avatar" aria-hidden="true">KG</span>
+                <span className="header-account-copy"><strong>My journey</strong><small>{connected?'Connected account':'Device-only guest'}</small></span>
+                <Cloud size={16} aria-hidden="true"/>
+              </button>
+              <button className="icon-btn header-profile-settings" aria-label="Your profile" title="Your profile" onClick={()=>setModal('profile')}><CircleUserRound size={20} aria-hidden="true"/></button>
+            </div>
+          </div>
+        </header>
         <main id="main-content" tabIndex={-1}><DatePicker value={date} onChange={setDate} timezone={profile.timezone} navigation />
           {loadError?<div className="warning">{loadError}</div>:loading||!authReady?<div className="loading"><BusyIndicator title="Opening your space…" detail="Getting your diary ready." /></div>:<PageTransition key={`${owner}:${page}`}>{content}</PageTransition>}
           <footer className="page-footer"><span><Flame size={14}/>KGM-FIT</span><p>Small steps. Lasting change.</p><button className="text-btn" onClick={()=>setModal('account')}>Privacy & your data</button></footer>

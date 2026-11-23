@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { CircleUserRound, Dumbbell, Ruler, Utensils } from 'lucide-react';
 import { useApp } from '../context';
 import { Modal } from './ui';
+import { SegmentHighlight, SlidingContent } from './motion';
 import { activities, energy, localDate, macroTargets, proposedTarget } from '../lib/calories';
 import { save } from '../lib/db';
 import type { Profile, Weight } from '../types';
@@ -18,6 +19,7 @@ export default function ProfileEditor({ close }: { close: () => void }) {
   const [p, setP] = useState<Profile>({ ...a.profile });
   const [reviewed, setReviewed] = useState(false);
   const [tab, setTab] = useState<ProfileTab>('body');
+  const [direction, setDirection] = useState(1);
   const [saving, setSaving] = useState(false);
   const id = useId();
   const form = useRef<HTMLFormElement>(null);
@@ -30,6 +32,11 @@ export default function ProfileEditor({ close }: { close: () => void }) {
     setP(prev => ({ ...prev, [key]: value }));
     setReviewed(false);
   };
+  const selectTab = (next: ProfileTab) => {
+    if (next === tab) return;
+    setDirection(tabs.findIndex(item => item.key === next) > tabs.findIndex(item => item.key === tab) ? 1 : -1);
+    setTab(next);
+  };
 
   useEffect(() => {
     form.current?.closest('.modal-body')?.scrollTo({ top: 0 });
@@ -41,7 +48,7 @@ export default function ProfileEditor({ close }: { close: () => void }) {
       : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : undefined;
     if (next === undefined) return;
     event.preventDefault();
-    setTab(tabs[next].key);
+    selectTab(tabs[next].key);
     tabButtons.current[next]?.focus();
   };
 
@@ -53,11 +60,11 @@ export default function ProfileEditor({ close }: { close: () => void }) {
         // Every tab shares one draft. Validate body fields even when another tab is open.
         if (!Number.isFinite(p.age) || !Number.isFinite(p.height) || !Number.isFinite(p.weight)
           || p.age < 18 || p.age > 100 || p.height < 100 || p.height > 230 || p.weight < 30 || p.weight > 350) {
-          setTab('body');
+          selectTab('body');
           throw new Error('Enter valid adult age, height and weight.');
         }
         if (p.targetWeight !== undefined && (!Number.isFinite(p.targetWeight) || p.targetWeight < 30 || p.targetWeight >= p.weight)) {
-          setTab('body');
+          selectTab('body');
           throw new Error('Choose a lower target weight of at least 30 kg, or leave it blank.');
         }
         if (!Number.isFinite(p.deficit) || p.deficit < 0 || p.deficit > 15
@@ -84,12 +91,13 @@ export default function ProfileEditor({ close }: { close: () => void }) {
   return <Modal title="Your profile" headingIcon={<CircleUserRound size={24} aria-hidden="true" />}
     close={close} wide busy={saving} className="profile-modal"
     navigation={<div className="profile-navigation">
-      <div className="profile-tabs" role="tablist" aria-label="Profile sections">
+      <div className="profile-tabs segmented-control" role="tablist" aria-label="Profile sections">
         {tabs.map((item, index) => <button key={item.key} type="button" role="tab"
           id={`${id}-tab-${item.key}`} aria-controls={`${id}-panel-${item.key}`}
           aria-selected={tab === item.key} tabIndex={tab === item.key ? 0 : -1}
           ref={element => { tabButtons.current[index] = element; }}
-          onKeyDown={event => moveTab(event, index)} onClick={() => setTab(item.key)}>
+          onKeyDown={event => moveTab(event, index)} onClick={() => selectTab(item.key)}>
+          {tab === item.key && <SegmentHighlight id={`${id}-selection`} />}
           <item.icon size={18} aria-hidden="true" /><span>{item.label}</span>
         </button>)}
       </div>
@@ -110,6 +118,7 @@ export default function ProfileEditor({ close }: { close: () => void }) {
       </button>
     </div>}>
     <form ref={form} id={`${id}-form`} noValidate onSubmit={event => { event.preventDefault(); void commit(); }}>
+      <SlidingContent activeKey={tab} direction={direction}>
       <section role="tabpanel" tabIndex={0} id={`${id}-panel-body`} aria-labelledby={`${id}-tab-body`} hidden={tab !== 'body'}>
           <p className="subtext">Your measurements help estimate your daily food target.</p>
           <div className="form-grid three">
@@ -165,6 +174,7 @@ export default function ProfileEditor({ close }: { close: () => void }) {
           </div>
           <p className="fineprint">General adult wellness guidance. Seek an individualized plan for pregnancy, eating disorders or health conditions affecting nutrition/exercise. No workout calories are automatically added to your food allowance.</p>
       </section>
+      </SlidingContent>
     </form>
   </Modal>;
 }

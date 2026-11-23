@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Camera, Plus, Search, Trash2, Check, Save, Sparkles } from 'lucide-react';
 import { useApp } from '../context';
 import { FoodMark, Modal } from './ui';
+import { SegmentHighlight, SlidingContent } from './motion';
 import DatePicker from './DatePicker';
 import BusyIndicator, { BusyGlyph } from './BusyIndicator';
 import { records, remove, save } from '../lib/db';
@@ -15,10 +16,19 @@ import type { Food, LocalRecord, Meal, MealItem, PhotoDraft } from '../types';
 
 type PendingFood = Parsed & { grams?: number; source?: 'photo' };
 type Activity = 'preparing' | 'analyzing' | 'saving' | 'draft' | 'copying' | 'deleting';
+const modes = ['manual', 'text', 'photo'] as const;
+type EntryMode = typeof modes[number];
 
 export default function FoodComposer({ close, slot = 'lunch', meal, food, initialMode = 'manual' }: { close: () => void; slot?: Meal['slot']; meal?: LocalRecord<Meal>; food?: Food; initialMode?: 'manual' | 'text' | 'photo' }) {
   const a = useApp();
-  const [mode, setMode] = useState<'manual' | 'text' | 'photo'>(initialMode);
+  const [mode, setMode] = useState<EntryMode>(initialMode);
+  const [direction, setDirection] = useState(1);
+  const id = useId();
+  const selectMode = (next: EntryMode) => {
+    if (next === mode) return;
+    setDirection(modes.indexOf(next) > modes.indexOf(mode) ? 1 : -1);
+    setMode(next);
+  };
   const [name, setName] = useState(meal?.data.name ?? '');
   const [mealSlot, setMealSlot] = useState<Meal['slot']>(meal?.data.slot ?? slot);
   const [date, setDate] = useState(meal?.data.date ?? a.date);
@@ -143,7 +153,8 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food, initia
         : activity === 'saving' ? 'Saving this meal and updating your calories.'
         : 'Updating your diary and daily totals.'} /> : undefined}>
     <fieldset className="composer-fields" disabled={busy} aria-busy={busy}>
-    <div className="tabs" role="group" aria-label="Meal entry method">{(['manual', 'text', 'photo'] as const).map(v => <button key={v} aria-pressed={mode === v} className={mode === v ? 'active' : ''} onClick={() => setMode(v)}>{v === 'manual' ? <Search size={16} /> : v === 'text' ? <Plus size={16} /> : <Camera size={16} />}{v === 'manual' ? 'Search foods' : v === 'text' ? 'Type a meal' : 'Meal photo'}</button>)}</div>
+    <div className="tabs segmented-control" role="group" aria-label="Meal entry method">{modes.map(v => <button key={v} type="button" aria-pressed={mode === v} className={mode === v ? 'active' : ''} onClick={() => selectMode(v)}>{mode === v && <SegmentHighlight id={`${id}-selection`} />}{v === 'manual' ? <Search size={16} aria-hidden="true" /> : v === 'text' ? <Plus size={16} aria-hidden="true" /> : <Camera size={16} aria-hidden="true" />}<span>{v === 'manual' ? 'Search foods' : v === 'text' ? 'Type a meal' : 'Meal photo'}</span></button>)}</div>
+    <SlidingContent activeKey={mode} direction={direction}>
     {mode === 'manual' && <><label className="search-field"><Search size={18} /><input aria-label="Search foods" placeholder="Rice, parippu, chicken curry…" value={search} onChange={e => setSearch(e.target.value)} /></label><div className="food-results">{matches.map(f => <button key={f.id} className="food-result" onClick={() => add(f)}><FoodMark food={f} /><span><strong>{f.name}</strong><small>{Math.round(f.kcal)} kcal / 100 g · {f.state}</small></span><Plus size={17} /></button>)}</div>{!matches.length && <p className="subtext">No match. Add a custom food from the Food screen, or select a familiar alternative.</p>}</>}
     {mode === 'text' && <><label>Describe your meal<textarea rows={3} placeholder="150 g cooked red rice, 100 g chicken curry, and 2 eggs" value={text} onChange={e => setText(e.target.value)} /></label><p className="fineprint">Works offline for known foods. Grams are best; cups and plates need a serving selection.</p><button className="btn secondary" disabled={!text.trim()} onClick={parse}><Plus size={16} />Review foods</button></>}
     {mode === 'photo' && <div className="photo-section">
@@ -157,12 +168,13 @@ export default function FoodComposer({ close, slot = 'lunch', meal, food, initia
       <label className="checkbox"><input type="checkbox" disabled={busy} checked={consent} onChange={e => setConsent(e.target.checked)} /><span>Allow Google Gemini to analyze this photo and description. Free-tier content may be used to improve its products.</span></label>
       <p className="fineprint">Only this meal is shared. Your identity, health profile and diary are excluded.</p>
       <div className="button-row"><button className={`btn primary ${activity === 'analyzing' ? 'btn-busy' : ''}`} disabled={busy || !photo || !consent || Boolean(unavailable)} onClick={() => void analyze()}>{activity === 'analyzing' ? <BusyGlyph /> : <Sparkles size={16} />}{activity === 'analyzing' ? 'Estimating…' : estimate ? 'Estimate again' : 'Estimate calories'}</button><button className="btn secondary" disabled={!photo || busy} onClick={() => void storeDraft()}>{activity === 'draft' ? <BusyGlyph /> : <Save size={16} />}{activity === 'draft' ? 'Saving draft…' : 'Save offline draft'}</button></div>
-      {aiError && <div className="warning" role="alert"><p>{aiError}</p><button className="btn secondary" onClick={() => setMode('manual')}>Search foods instead</button></div>}
+      {aiError && <div className="warning" role="alert"><p>{aiError}</p><button className="btn secondary" onClick={() => selectMode('manual')}>Search foods instead</button></div>}
       <p className="fineprint">Photo calories are approximate. Oil, sauces and portion sizes can change the result.</p>
       {draftRows.length > 0 && <details className="details"><summary>Saved photo drafts ({draftRows.length})</summary>{draftRows.map(r => <div className="button-row" key={r.id}><button className="text-btn" disabled={busy} onClick={() => { resetPhotoReview(); const d = r.data as PhotoDraft; setPhoto({ mime: d.mime, base64: d.base64 }); setDescription(d.description); setDate(d.date); setDraftId(r.id); }}>Open {((r.data as PhotoDraft).description || 'meal draft').slice(0, 40)} · {(r.data as PhotoDraft).date}</button><button className="icon-btn" aria-label="Delete photo draft" onClick={() => void a.run(() => remove(r), 'Photo draft deleted.')}><Trash2 size={15} /></button></div>)}</details>}
       {estimate && <div className="estimate-box" role="region" aria-label="Photo estimate"><h3>Photo estimate: {Math.round(estimate.foods.reduce((sum, food) => sum + food.kcalMin, 0))}–{Math.round(estimate.foods.reduce((sum, food) => sum + food.kcalMax, 0))} kcal</h3><p>The foods are filled in below. Check their names, portions and calories before saving.</p><p>Known foods use their nutrition references. Other foods use editable AI estimates.</p><details><summary>What AI saw & why it may vary</summary><p className="fineprint">{estimate.uncertainty}</p>{estimate.foods.map((food, index) => <div key={index} className="ai-item"><strong>{food.name} · about {Math.round(food.grams)} g</strong><small>{Math.round(food.kcalMin)}–{Math.round(food.kcalMax)} kcal</small><p>{food.assumptions}</p></div>)}</details></div>}
       {photo && <details className="details"><summary>Photo storage options</summary><label className="checkbox"><input type="checkbox" checked={retain} onChange={e => setRetain(e.target.checked)} /><span>Keep a copy in my private cloud storage. Optional; requires sign-in and internet.</span></label></details>}
     </div>}
+    </SlidingContent>
     {unresolved.length > 0 && <div className="warning"><strong>These foods need a choice</strong>{unresolved.map((row, i) => <div key={i}><p>“{row.text}” · {row.reason}</p><div className="button-row"><select aria-label={`Resolve ${row.text}`} defaultValue="" onChange={e => { const food = a.foods.find(x => x.id === e.target.value); if (food) { const id = crypto.randomUUID(); setItems(previous => [...previous, { id, food, grams: row.grams ?? 100 }]); if (row.source === 'photo') setAiItemIds(previous => [...previous, id]); setUnresolved(rows => rows.filter((_, j) => j !== i)); } }}><option value="">Choose food · then edit grams</option>{a.foods.map(f => <option value={f.id} key={f.id}>{f.name}</option>)}</select><button className="icon-btn" aria-label={`Remove unmatched ${row.text}`} onClick={() => setUnresolved(rows => rows.filter((_, j) => j !== i))}><Trash2 size={16} /></button></div></div>)}</div>}
     <div className="review-section"><h3>Your meal review <span className="badge">{Math.round(sum.kcal)} kcal</span></h3>{items.length === 0 && <p className="subtext">Add a food above to begin.</p>}
       {items.some(i => i.food.group === 'supplements') && <p className="subtext">Use dry powder grams. Water adds no calories; add milk and other shake ingredients as separate foods.</p>}

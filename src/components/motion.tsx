@@ -1,6 +1,26 @@
 import { useEffect, type ReactNode } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 
+export function SegmentHighlight({ id }: { id: string }) {
+  const reduce = useReducedMotion();
+  if (reduce) return <span className="segment-highlight" aria-hidden="true" />;
+  return <motion.span className="segment-highlight" aria-hidden="true"
+    layoutId={id} initial={false} style={{ borderRadius: 9 }}
+    transition={{ type: 'spring', stiffness: 520, damping: 38, mass: .8 }}
+  />;
+}
+
+export function SlidingContent({ children, activeKey, direction }: { children: ReactNode; activeKey: string; direction: number }) {
+  const reduce = useReducedMotion();
+  return <div className="sliding-content">
+    <motion.div key={activeKey}
+      initial={reduce ? false : { opacity: 0, x: direction * 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: reduce ? 0 : .24, ease: [.22, 1, .36, 1] }}
+    >{children}</motion.div>
+  </div>;
+}
+
 export function PageTransition({ children }: { children: ReactNode }) {
   const reduce = useReducedMotion();
   return <motion.div

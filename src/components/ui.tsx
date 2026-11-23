@@ -18,7 +18,7 @@ export function Modal({ title, children, close, wide = false, busy = false, acti
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, []);
-  return <motion.dialog ref={ref} aria-labelledby={headingId} className={`modal ${wide ? 'wide' : ''} ${className}`}
+  return <motion.dialog ref={ref} layoutRoot aria-labelledby={headingId} className={`modal ${wide ? 'wide' : ''} ${className}`}
     initial={reduce ? false : { opacity: 0, y: 14, scale: .985 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
     transition={{ duration: reduce ? 0 : .2, ease: [.22, 1, .36, 1] }}
@@ -26,7 +26,7 @@ export function Modal({ title, children, close, wide = false, busy = false, acti
     <div className="modal-head"><h2 id={headingId}>{headingIcon}{title}</h2><button className="icon-btn" aria-label="Close dialog" disabled={busy} onClick={close}><X size={20} /></button></div>
     {(activity || context?.working&&!busy) && <div className="modal-activity">{activity || <BusyIndicator title="Updating your space…" detail="Finishing your changes." />}</div>}
     {navigation}
-    <div className="modal-body" tabIndex={navigation ? -1 : 0}>{children}</div>
+    <motion.div layoutScroll className="modal-body" tabIndex={navigation ? -1 : 0}>{children}</motion.div>
     {footer}
   </motion.dialog>;
 }
